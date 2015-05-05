@@ -1,19 +1,10 @@
 package tum.ei.ics.intelligentcharger.receiver;
 
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.BatteryManager;
-import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.Calendar;
-
-import tum.ei.ics.intelligentcharger.BatteryDataContract;
-import tum.ei.ics.intelligentcharger.BatteryDataDbHelper;
 
 /**
  * Created by mattia on 30.04.15.

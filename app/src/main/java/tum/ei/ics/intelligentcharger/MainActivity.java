@@ -2,19 +2,18 @@ package tum.ei.ics.intelligentcharger;
 
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
-import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 
-import java.util.ArrayList;
+import java.util.List;
 
+import tum.ei.ics.intelligentcharger.adapter.EventAdapter;
+import tum.ei.ics.intelligentcharger.entity.Event;
 import tum.ei.ics.intelligentcharger.receiver.BatteryChangedReceiver;
 import tum.ei.ics.intelligentcharger.service.BatteryService;
 
@@ -54,7 +53,7 @@ public class MainActivity extends ActionBarActivity {
 
     public void startService(View view) {
         // Start the service
-        intent = new Intent(this, BatteryService.class);
+        intent.setClass(this, BatteryService.class);
         startService(intent);
     }
 
@@ -63,62 +62,12 @@ public class MainActivity extends ActionBarActivity {
         stopService(intent);
     }
 
-    public void startReceiver(View view) {
-        this.registerReceiver(batteryReceiver,
-                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        Toast.makeText(getApplicationContext(), "Receiver started", Toast.LENGTH_SHORT).show();
-    }
-
-    public void stopReceiver(View view) {
-        try {
-            this.unregisterReceiver(batteryReceiver);
-            Toast.makeText(getApplicationContext(), "Receiver stopped", Toast.LENGTH_SHORT).show();
-        } catch(Exception e) {
-            Toast.makeText(getApplicationContext(), "Receiver already stopped", Toast.LENGTH_SHORT).show();
-        }
-    }
-
     public void updateList(View view) {
-        // Open Database
-        BatteryDataDbHelper mDbHelper = new BatteryDataDbHelper(getApplicationContext());
-        SQLiteDatabase db = mDbHelper.getReadableDatabase();
-        String query = "SELECT * FROM " + BatteryDataContract.BatteryDataEntry.TABLE_NAME + " ORDER BY " + BatteryDataContract.BatteryDataEntry.COLUMN_NAME_DATETIME + " DESC";
-        Cursor cursor = db.rawQuery(query, null);
-
-        String[] fromColumns = {BatteryDataContract.BatteryDataEntry.COLUMN_NAME_STATUS,
-                BatteryDataContract.BatteryDataEntry.COLUMN_NAME_LEVEL};
-        int[] toViews = {R.id.tvLevel, R.id.tvStatus};
-
-        // Different adapters
-        BatteryDataAdapter batterydataAdapter = new BatteryDataAdapter(this, cursor);
-
-        cursor.moveToFirst();
-        ArrayList<String> names = new ArrayList<String>();
-        while(!cursor.isAfterLast()) {
-            names.add(cursor.getString(cursor.getColumnIndex("name")));
-            cursor.moveToNext();
-        }
-
-
         ListView lv = (ListView) findViewById(R.id.lvList);
-        lv.setAdapter(batterydataAdapter);
+        EventAdapter eventAdapter = new EventAdapter(this);
 
-/*
-        // do stuff
-        BatteryDataDbHelper mDbHelper = new BatteryDataDbHelper(getApplicationContext());
-        SQLiteDatabase db = mDbHelper.getReadableDatabase();
-
-        String query = "SELECT * FROM " + BatteryDataContract.BatteryDataEntry.TABLE_NAME;
-        Cursor c = db.rawQuery(query, null);
-
-        ListView lvItems = (ListView) findViewById(R.id.lvList);
-
-
-
-        BatteryDataAdapter batterydataAdapter = new BatteryDataAdapter(this, c);
-        lvItems.setAdapter(batterydataAdapter);
-//        batterydataAdapter.changeCursor(c);
-*/
-        cursor.close();
+        List<Event> events = Event.listAll(Event.class);
+        eventAdapter.setData(events);
+        lv.setAdapter(eventAdapter);
     }
 }

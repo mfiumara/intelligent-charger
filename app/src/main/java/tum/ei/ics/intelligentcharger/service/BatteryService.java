@@ -24,7 +24,7 @@ public class BatteryService extends Service {
     private ServiceHandler mServiceHandler;
 
     private static BatteryChangedReceiver mBatteryChangedReceiver = new BatteryChangedReceiver();
-    private static PowerConnectedReceiver mPowerConnectionReceiver = new PowerConnectedReceiver();
+    private static PowerConnectedReceiver mPowerConnectedReceiver = new PowerConnectedReceiver();
     private static PowerDisconnectedReceiver mPowerDisconnectedReceiver = new PowerDisconnectedReceiver();
 
     // Handler that receives messages from the thread
@@ -37,7 +37,7 @@ public class BatteryService extends Service {
             // Normally we would do some work here, like download a file.
             registerReceiver(mBatteryChangedReceiver,
                     new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-            registerReceiver(mPowerConnectionReceiver,
+            registerReceiver(mPowerConnectedReceiver,
                     new IntentFilter(Intent.ACTION_POWER_CONNECTED));
             registerReceiver(mPowerDisconnectedReceiver,
                     new IntentFilter(Intent.ACTION_POWER_DISCONNECTED));
