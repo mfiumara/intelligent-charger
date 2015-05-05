@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
+import java.util.AbstractMap;
 import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
@@ -20,8 +21,6 @@ public class EventAdapter extends BaseAdapter {
 
     private LayoutInflater myInflater;
     private List<Event> list;
-
-//    private static AbstractMap<, "AC">;
 
     public EventAdapter(Context context) {
         myInflater = LayoutInflater.from(context);
