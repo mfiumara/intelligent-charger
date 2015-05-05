@@ -1,7 +1,7 @@
 package tum.ei.ics.intelligentcharger.adapter;
 
 import android.content.Context;
-import android.util.Log;
+import android.os.BatteryManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +20,8 @@ public class EventAdapter extends BaseAdapter {
 
     private LayoutInflater myInflater;
     private List<Event> list;
+
+//    private static AbstractMap<, "AC">;
 
     public EventAdapter(Context context) {
         myInflater = LayoutInflater.from(context);
@@ -53,6 +55,8 @@ public class EventAdapter extends BaseAdapter {
             holder = new ViewHolder();
             holder.level = (TextView) convertView.findViewById(R.id.level);
             holder.status = (TextView) convertView.findViewById(R.id.status);
+            holder.plugged = (TextView) convertView.findViewById(R.id.plugged);
+            holder.datetime = (TextView) convertView.findViewById(R.id.datetime);
 
             convertView.setTag(holder);
         } else {
@@ -61,6 +65,7 @@ public class EventAdapter extends BaseAdapter {
 
         holder.level.setText(Integer.toString(list.get(position).level));
         holder.status.setText(Integer.toString(list.get(position).status));
+        holder.plugged.setText(Integer.toString(list.get(position).plugged));
         holder.datetime.setText(list.get(position).datetime);
 
         return convertView;

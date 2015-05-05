@@ -31,6 +31,5 @@ public class BatteryChangedReceiver extends BroadcastReceiver {
 
         Event event = new Event(status, chargePlug, level, voltage, temperature);
         event.save();
-
     }
 }

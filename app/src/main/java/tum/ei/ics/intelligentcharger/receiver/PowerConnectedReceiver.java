@@ -28,13 +28,8 @@ public class PowerConnectedReceiver extends BroadcastReceiver {
         boolean usbCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_USB;
         boolean acCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
 
-        Toast.makeText(context, "Plugged: " + isCharging, Toast.LENGTH_SHORT).show();
-
-        if (isCharging) {
-            // Plugged in: Get past events and predict (with delay)
-        } else {
-            // Plugged out: save event to database
-        }
+        String text = isCharging ? "Plugged" : "Unplugged";
+        Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
 
     }
 }

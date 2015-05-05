@@ -4,10 +4,12 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import java.util.List;
@@ -69,5 +71,9 @@ public class MainActivity extends ActionBarActivity {
         List<Event> events = Event.listAll(Event.class);
         eventAdapter.setData(events);
         lv.setAdapter(eventAdapter);
+    }
+
+    public void debugMessages(View view) {
+        boolean on = ((Switch) view).isChecked();
     }
 }
