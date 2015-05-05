@@ -8,8 +8,8 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Start Service"
-        android:id="@+id/start"
+        android:text="Start Receiver"
+        android:id="@+id/receiver_start"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
@@ -18,30 +18,49 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Stop Service"
-        android:id="@+id/stop"
+        android:text="Stop Receiver"
+        android:id="@+id/receiver_stop"
         android:onClick="stopReceiver"
         android:layout_alignParentTop="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true" />
 
-    <ListView
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/lvList"
-        android:layout_centerHorizontal="true"
-        android:layout_alignParentBottom="true"
-        android:layout_below="@+id/start" />
+        android:text="Update List"
+        android:id="@+id/updatelist"
+        android:onClick="updateList"
+        android:layout_below="@+id/service_start"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Add Status"
-        android:id="@+id/addstatus"
-        android:onClick="addStatus"
-        android:layout_alignTop="@+id/stop"
-        android:layout_toRightOf="@+id/start"
-        android:layout_toLeftOf="@+id/stop"
-        android:layout_toStartOf="@+id/stop" />
+        android:text="Start Service"
+        android:id="@+id/service_start"
+        android:onClick="startService"
+        android:layout_below="@+id/receiver_start"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stop Service"
+        android:id="@+id/service_stop"
+        android:onClick="stopService"
+        android:layout_below="@+id/receiver_stop"
+        android:layout_alignRight="@+id/receiver_stop"
+        android:layout_alignEnd="@+id/receiver_stop" />
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/lvList"
+        android:layout_below="@+id/updatelist"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
 
 </RelativeLayout>

@@ -1,4 +1,4 @@
-package tum.ei.ics.intelligentcharger;
+package tum.ei.ics.intelligentcharger.receiver;
 
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -7,17 +7,19 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.BatteryManager;
 import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Calendar;
 
+import tum.ei.ics.intelligentcharger.BatteryDataContract;
+import tum.ei.ics.intelligentcharger.BatteryDataDbHelper;
+
 /**
  * Created by mattia on 30.04.15.
  */
-public class PowerConnectionReceiver extends BroadcastReceiver {
+public class BatteryChangedReceiver extends BroadcastReceiver {
 
-    public static final String TAG = "PowerConnectionReceiver";
+    private static final String TAG = "BatteryChangedReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -56,5 +58,6 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // Insert the new row, returning the primary key value of the new row
         long newRowId = db.insert(BatteryDataContract.BatteryDataEntry.TABLE_NAME, "null", values);
 
+        db.close();
     }
 }

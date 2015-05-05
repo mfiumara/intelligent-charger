@@ -1,22 +1,22 @@
 package tum.ei.ics.intelligentcharger;
 
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.os.BatteryManager;
-import android.content.BroadcastReceiver;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+
+import tum.ei.ics.intelligentcharger.receiver.BatteryChangedReceiver;
+import tum.ei.ics.intelligentcharger.service.BatteryService;
 
 public class MainActivity extends ActionBarActivity {
 
@@ -60,24 +60,50 @@ public class MainActivity extends ActionBarActivity {
 
     public void stopService(View view) {
         // Stop the service
-//        stopService(intent);
-
+        stopService(intent);
     }
 
     public void startReceiver(View view) {
         this.registerReceiver(batteryReceiver,
                 new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        Toast.makeText(getApplicationContext(), "Receiver started", Toast.LENGTH_SHORT).show();
     }
 
     public void stopReceiver(View view) {
         try {
             this.unregisterReceiver(batteryReceiver);
+            Toast.makeText(getApplicationContext(), "Receiver stopped", Toast.LENGTH_SHORT).show();
         } catch(Exception e) {
             Toast.makeText(getApplicationContext(), "Receiver already stopped", Toast.LENGTH_SHORT).show();
         }
     }
 
-    public void addStatus(View view) {
+    public void updateList(View view) {
+        // Open Database
+        BatteryDataDbHelper mDbHelper = new BatteryDataDbHelper(getApplicationContext());
+        SQLiteDatabase db = mDbHelper.getReadableDatabase();
+        String query = "SELECT * FROM " + BatteryDataContract.BatteryDataEntry.TABLE_NAME + " ORDER BY " + BatteryDataContract.BatteryDataEntry.COLUMN_NAME_DATETIME + " DESC";
+        Cursor cursor = db.rawQuery(query, null);
+
+        String[] fromColumns = {BatteryDataContract.BatteryDataEntry.COLUMN_NAME_STATUS,
+                BatteryDataContract.BatteryDataEntry.COLUMN_NAME_LEVEL};
+        int[] toViews = {R.id.tvLevel, R.id.tvStatus};
+
+        // Different adapters
+        BatteryDataAdapter batterydataAdapter = new BatteryDataAdapter(this, cursor);
+
+        cursor.moveToFirst();
+        ArrayList<String> names = new ArrayList<String>();
+        while(!cursor.isAfterLast()) {
+            names.add(cursor.getString(cursor.getColumnIndex("name")));
+            cursor.moveToNext();
+        }
+
+
+        ListView lv = (ListView) findViewById(R.id.lvList);
+        lv.setAdapter(batterydataAdapter);
+
+/*
         // do stuff
         BatteryDataDbHelper mDbHelper = new BatteryDataDbHelper(getApplicationContext());
         SQLiteDatabase db = mDbHelper.getReadableDatabase();
@@ -87,11 +113,12 @@ public class MainActivity extends ActionBarActivity {
 
         ListView lvItems = (ListView) findViewById(R.id.lvList);
 
-        //SimpleCursorAdapter simpleAdapter = new SimpleCursorAdapter(
+
 
         BatteryDataAdapter batterydataAdapter = new BatteryDataAdapter(this, c);
         lvItems.setAdapter(batterydataAdapter);
 //        batterydataAdapter.changeCursor(c);
-
+*/
+        cursor.close();
     }
 }

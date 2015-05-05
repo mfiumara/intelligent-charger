@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="tum.ei.ics.intelligentcharger" >
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
+        android:theme="@style/AppTheme"
+        android:name="com.orm.SugarApp"
+        tools:replace="android:icon,android:theme" >
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name" >
@@ -16,16 +19,12 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".BatteryService" />
+        <service android:name=".service.BatteryService" />
 
-
-        <receiver android:name=".PowerConnectionReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
-                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
-            </intent-filter>
-        </receiver>
-
+        <meta-data android:name="DATABASE" android:value="BatteryData.db" />
+        <meta-data android:name="VERSION" android:value="2" />
+        <meta-data android:name="QUERY_LOG" android:value="true" />
+        <meta-data android:name="DOMAIN_PACKAGE_NAME" android:value="tum.ei.ics.intelligentcharger.entity" />
 
     </application>
 

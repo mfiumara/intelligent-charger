@@ -9,11 +9,15 @@
         android:layout_height="wrap_content"
         android:text="Study cursors"
         android:textAppearance="?android:attr/textAppearanceLarge" />
+
     <TextView
-        android:id="@+id/tvCharged"
+        android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="10dp"
-        android:text="3"
+        android:text="USB"
         android:textAppearance="?android:attr/textAppearanceMedium" />
+
+
+
 </LinearLayout>

@@ -27,13 +27,13 @@ public class BatteryDataAdapter extends CursorAdapter {
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
         // Find fields to populate in inflated template
-        TextView tvBody = (TextView) view.findViewById(R.id.tvCharged);
-        TextView tvPriority = (TextView) view.findViewById(R.id.tvLevel);
+        TextView tvStatus = (TextView) view.findViewById(R.id.tvStatus);
+        TextView tvLevel = (TextView) view.findViewById(R.id.tvLevel);
         // Extract properties from cursor
-        String body = cursor.getString(cursor.getColumnIndexOrThrow("Charged"));
-        int priority = cursor.getInt(cursor.getColumnIndexOrThrow("Level"));
+        String status = cursor.getString(cursor.getColumnIndexOrThrow("status"));
+        int level = cursor.getInt(cursor.getColumnIndexOrThrow("level"));
         // Populate fields with extracted properties
-        tvBody.setText(body);
-        tvPriority.setText(String.valueOf(priority));
+        tvStatus.setText(status);
+        tvLevel.setText(String.valueOf(level));
     }
 }
