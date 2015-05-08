@@ -27,6 +27,13 @@
             </intent-filter>
         </receiver>
 
+        <receiver android:name=".receiver.PowerConnectionReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+
         <service android:name=".service.BatteryService" />
 
         <meta-data android:name="DATABASE" android:value="BatteryData.db" />

@@ -29,7 +29,7 @@ public class PowerDisconnectedReceiver extends BroadcastReceiver {
         boolean acCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
 
         String text = isCharging ? "Plugged" : "Unplugged";
-        Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
+  //      Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
 
     }
 }

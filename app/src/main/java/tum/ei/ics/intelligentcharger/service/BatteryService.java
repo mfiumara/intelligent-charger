@@ -37,13 +37,6 @@ public class BatteryService extends Service {
             // Normally we would do some work here, like download a file.
             registerReceiver(mBatteryChangedReceiver,
                     new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-            registerReceiver(mPowerConnectedReceiver,
-                    new IntentFilter(Intent.ACTION_POWER_CONNECTED));
-            registerReceiver(mPowerDisconnectedReceiver,
-                    new IntentFilter(Intent.ACTION_POWER_DISCONNECTED));
-
-            // Stop the service using the startId, so that we don't stop
-            // the service in the middle of handling another job
 //            stopSelf(msg.arg1);
         }
     }
