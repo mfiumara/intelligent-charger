@@ -53,20 +53,16 @@ public class EventAdapter extends BaseAdapter {
             convertView = myInflater.inflate(R.layout.item_event, parent, false);
             holder = new ViewHolder();
             holder.level = (TextView) convertView.findViewById(R.id.level);
-            holder.status = (TextView) convertView.findViewById(R.id.status);
-            holder.plugged = (TextView) convertView.findViewById(R.id.plugged);
             holder.datetime = (TextView) convertView.findViewById(R.id.datetime);
-
+            holder.customStatus = (TextView) convertView.findViewById(R.id.custom_status);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
 
         holder.level.setText(Integer.toString(list.get(position).level));
-        holder.status.setText(Integer.toString(list.get(position).status));
-        holder.plugged.setText(Integer.toString(list.get(position).plugged));
         holder.datetime.setText(list.get(position).datetime);
-
+        holder.customStatus.setText(list.get(position).customStatus);
         return convertView;
     }
 
@@ -75,5 +71,6 @@ public class EventAdapter extends BaseAdapter {
         TextView status;
         TextView datetime;
         TextView plugged;
+        TextView customStatus;
     }
 }

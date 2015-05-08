@@ -14,17 +14,20 @@ public class Event extends SugarRecord<Event> {
     public Integer voltage;
     public Float temperature;
     public String datetime;
+    public String customStatus;
 
 //    public ChargeCurve chargeCurve;
 
     public Event() {}
 
-    public Event(Integer status, Integer plugged, Integer level, Integer voltage, Integer temperature) {
+    public Event(Integer status, Integer plugged, Integer level, Integer voltage,
+                 Integer temperature, String customStatus) {
         this.status = status;
         this.plugged = plugged;
         this.level = level;
         this.voltage = voltage;
         this.temperature = temperature / 10.0f;
+        this.customStatus = customStatus;
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String date = sdf.format(new Date());

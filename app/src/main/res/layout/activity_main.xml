@@ -8,20 +8,9 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Update List"
+        android:text="Update Events"
         android:id="@+id/updatelist"
         android:onClick="updateList"
-        android:layout_alignParentTop="true"
-        android:layout_toRightOf="@+id/service_start"
-        android:layout_toLeftOf="@+id/service_stop"
-        android:layout_toStartOf="@+id/service_stop" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Start Service"
-        android:id="@+id/service_start"
-        android:onClick="startService"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
@@ -29,9 +18,9 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Stop Service"
-        android:id="@+id/service_stop"
-        android:onClick="stopService"
+        android:text="Clear Events"
+        android:id="@+id/clear_events"
+        android:onClick="clearEvents"
         android:layout_alignParentTop="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true" />

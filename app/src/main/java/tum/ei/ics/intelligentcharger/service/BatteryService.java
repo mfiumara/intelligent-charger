@@ -12,8 +12,6 @@ import android.os.Process;
 import android.widget.Toast;
 
 import tum.ei.ics.intelligentcharger.receiver.BatteryChangedReceiver;
-import tum.ei.ics.intelligentcharger.receiver.PowerConnectedReceiver;
-import tum.ei.ics.intelligentcharger.receiver.PowerDisconnectedReceiver;
 
 /**
  * Created by mattia on 29.04.15.
@@ -24,8 +22,6 @@ public class BatteryService extends Service {
     private ServiceHandler mServiceHandler;
 
     private static BatteryChangedReceiver mBatteryChangedReceiver = new BatteryChangedReceiver();
-    private static PowerConnectedReceiver mPowerConnectedReceiver = new PowerConnectedReceiver();
-    private static PowerDisconnectedReceiver mPowerDisconnectedReceiver = new PowerDisconnectedReceiver();
 
     // Handler that receives messages from the thread
     private final class ServiceHandler extends Handler {

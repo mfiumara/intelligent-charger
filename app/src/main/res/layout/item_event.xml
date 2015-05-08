@@ -13,10 +13,19 @@
             android:id="@+id/level"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="100%"
+            android:text="100"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:layout_row="0"
             android:layout_column="0" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="%   "
+            android:id="@+id/textView"
+            android:layout_row="0"
+            android:layout_column="1" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -25,26 +34,16 @@
             android:textAppearance="?android:attr/textAppearanceMedium"
             android:id="@+id/datetime"
             android:layout_row="0"
-            android:layout_column="1" />
+            android:layout_column="6" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Plugged"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:id="@+id/plugged"
+            android:text="Charging"
+            android:id="@+id/custom_status"
             android:layout_row="0"
             android:layout_column="8" />
 
-        <TextView
-            android:id="@+id/status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:text="USB"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:layout_row="0"
-            android:layout_column="10" />
     </GridLayout>
 
 </LinearLayout>

@@ -3,6 +3,7 @@ package tum.ei.ics.intelligentcharger;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.BatteryManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -15,15 +16,15 @@ import java.util.List;
 import tum.ei.ics.intelligentcharger.adapter.EventAdapter;
 import tum.ei.ics.intelligentcharger.entity.Event;
 import tum.ei.ics.intelligentcharger.receiver.BatteryChangedReceiver;
-import tum.ei.ics.intelligentcharger.service.BatteryService;
 
 public class MainActivity extends ActionBarActivity {
 
     private static final String TAG = "MainActivity";
-    private static final String DEBUG_MESSAGES = "Debug";
 
     private static final BatteryChangedReceiver batteryReceiver = new BatteryChangedReceiver();
     private static Intent intent = new Intent();
+
+    private SharedPreferences mPrefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,15 +61,9 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void startService(View view) {
-        // Start the service
-        intent.setClass(this, BatteryService.class);
-        startService(intent);
-    }
-
-    public void stopService(View view) {
-        // Stop the service
-        stopService(intent);
+    public void clearEvents(View view) {
+        Event.deleteAll(Event.class);
+        this.updateList(view);
     }
 
     public void updateList(View view) {
@@ -78,15 +73,6 @@ public class MainActivity extends ActionBarActivity {
         List<Event> events = Event.listAll(Event.class);
         eventAdapter.setData(events);
         lv.setAdapter(eventAdapter);
-    }
-
-    public void processEvents(View view) {
-        SharedPreferences sharedPref = this.getSharedPreferences(
-                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-    }
-
-    public void exportCSV(View view) {
-
     }
 
 }
