@@ -10,6 +10,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
+import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 import java.util.List;
 
@@ -37,6 +40,13 @@ public class MainActivity extends ActionBarActivity {
 
         eventAdapter.setData(events);
         lv.setAdapter(eventAdapter);
+
+        SharedPreferences prefs = this.getSharedPreferences(
+                this.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+
+        String customStatus = prefs.getString(this.getString(R.string.custom_status), "");
+        TextView tv = (TextView) findViewById(R.id.tv_status);
+        tv.setText(customStatus);
     }
 
     @Override
@@ -64,15 +74,28 @@ public class MainActivity extends ActionBarActivity {
     public void clearEvents(View view) {
         Event.deleteAll(Event.class);
         this.updateList(view);
+
+        SharedPreferences prefs = this.getSharedPreferences(
+                this.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        SharedPreferences.Editor prefEdit = prefs.edit();
+        prefEdit.putString(this.getString(R.string.custom_status), "");
+        TextView tv = (TextView) findViewById(R.id.tv_status);
+        tv.setText("NA");
     }
 
     public void updateList(View view) {
         ListView lv = (ListView) findViewById(R.id.lvList);
         EventAdapter eventAdapter = new EventAdapter(this);
-
         List<Event> events = Event.listAll(Event.class);
         eventAdapter.setData(events);
         lv.setAdapter(eventAdapter);
+
+        SharedPreferences prefs = this.getSharedPreferences(
+                this.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+
+        String customStatus = prefs.getString(this.getString(R.string.custom_status), "");
+        TextView tv = (TextView) findViewById(R.id.tv_status);
+        tv.setText(customStatus);
     }
 
 }

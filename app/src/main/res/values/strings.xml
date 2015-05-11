@@ -14,6 +14,18 @@
     <string name="voltage">VOLTAGE</string>
     <string name="plugtype">PLUGTYPE</string>
     <string name="custom_status">CUSTOM_STATUS</string>
+    <string name="title_activity_swipe_tab">SwipeTab</string>
+
+    <string name="start_cycle_id">START_CYCLE_ID</string>
+    <string name="end_cycle_id">END_CYCLE_ID</string>
+    <string name="prev_cycle_id">PREV_CYCLE_ID</string>
+
+    <string name="charging">CHARGING</string>
+    <string name="discharging">DISCHARGING</string>
+
+    <string name="title_section1">Section 1</string>
+    <string name="title_section2">Section 2</string>
+    <string name="title_section3">Section 3</string>
 
 
 </resources>

@@ -6,8 +6,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.BatteryManager;
+import android.widget.Toast;
 
 import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.entity.Event;
 
 /**
@@ -31,48 +33,69 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         int currLevel  = intent.getIntExtra(BatteryManager.EXTRA_LEVEL,  -1);
         int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
         int currVoltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
-        boolean isCharging = currStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
-                currStatus == BatteryManager.BATTERY_STATUS_FULL;
-        boolean isFull = currLevel == 100;
         int currPlugtype = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
         boolean usbCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_USB;
         boolean acCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_AC;
-        String customStatus = (currLevel == 100 || isCharging) ? "Charging" : "Discharging";
+        boolean isCharging =
+                currStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
+                currStatus == BatteryManager.BATTERY_STATUS_FULL ||
+                usbCharge ||
+                acCharge;
+        boolean isFull = currLevel == 100;
 
-/*
-        // Get last event battery info
-        int prevStatus = prefs.getInt(context.getString(R.string.status), -1);
-        int prevLevel = prefs.getInt(context.getString(R.string.level), -1);
-        int prevTemp = prefs.getInt(context.getString(R.string.temperature), -1);
-        int prevVoltage = prefs.getInt(context.getString(R.string.voltage), -1);
-        int prevPlugtype = prefs.getInt(context.getString(R.string.plugtype), -1);
+        // Check if the phone is either charging or discharging using all information available.
+        // The app considers 100% SOC as charging, as this means it is not yet the end of
+        // the charge cycle.
+        String currCustomStatus = (isFull || isCharging)
+                ? context.getString(R.string.charging) : context.getString(R.string.discharging);
+        // Create current event
+        Event currEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage,
+                currTemp, currCustomStatus);
+        // Save event to database
+        currEvent.save();
 
+        // Get ID's of important events
+        Long startCycleID = prefs.getLong(context.getString(R.string.start_cycle_id), -1);
+        Long endCycleID = prefs.getLong(context.getString(R.string.end_cycle_id), -1);
 
-        // Determine whether or not to save a cycle
-        if (currLevel != 100 && isCharging) {
-            // Plug-in event
-            Event pluginEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage, currTemp, customStatus);
-        }
-
-
-        if (prevLevel != -1) {
-            // No previous cycle yet.
+        // Check battery state to determine type of event.
+        if (isCharging) {
+            if (isFull) {
+                // Charging and full: Do nothing
+            } else {
+                // Check if there is a cycle to save
+                if (startCycleID > 0 && endCycleID > 0) {
+                    // TODO: Check this statement for initial conditions!
+                    // Yes, we remembered the events to save, so now we save it to the database
+                    Event endEvent = Event.findById(Event.class, endCycleID);
+                    Cycle cycle = new Cycle(currEvent, endEvent);
+                    cycle.save();
+                    Toast.makeText(context, "Saved charge cycle to database", Toast.LENGTH_SHORT).show();
+                    // Reset saved events
+                    prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
+                    prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+                }
+                // Charging and not full: plug-in event so save this event as the start of a cycle
+                prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
+            }
         } else {
-
+            if (isFull) {
+                // Not charging but full: either disconnected charger or repetitive cycle
+                // Save this as temporary end cycle but do not save cycle to database yet
+                prefEdit.putLong(context.getString(R.string.end_cycle_id), currEvent.getId());
+            } else {
+                // Not charging and not full: Disconnected charger
+                // Save cycle to database using start_cycle_id and current id
+                Event startEvent = Event.findById(Event.class, startCycleID);
+                Cycle cycle = new Cycle(startEvent, currEvent);
+                cycle.save();
+                Toast.makeText(context, "Saved charge cycle to database", Toast.LENGTH_SHORT).show();
+                // Reset saved events
+                prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
+                prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+            }
         }
-*/
-        // Save event to SQL database and update last event battery info
-        Event event = new Event(currStatus, currPlugtype, currLevel, currVoltage, currTemp, customStatus);
-        event.save();
-
-        prefEdit.putInt(context.getString(R.string.status), currStatus);
-        prefEdit.putInt(context.getString(R.string.level), currLevel);
-        prefEdit.putInt(context.getString(R.string.temperature), currTemp);
-        prefEdit.putInt(context.getString(R.string.voltage), currVoltage);
-        prefEdit.putInt(context.getString(R.string.plugtype), currPlugtype);
-        prefEdit.putBoolean(context.getString(R.string.is_charging), isCharging);
-        prefEdit.putBoolean(context.getString(R.string.is_full), isFull);
-        prefEdit.putString(context.getString(R.string.custom_status), customStatus);
-        prefEdit.commit();
+        // Save data to shared preference file
+        prefEdit.apply();
     }
 }

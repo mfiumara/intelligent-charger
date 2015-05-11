@@ -23,8 +23,8 @@ public class Cycle extends SugarRecord<Cycle> {
 
     public Float getDuration() throws ParseException {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date pluginDate = sdf.parse(pluginEvent.datetime);
-        Date plugoutDate = sdf.parse(plugoutEvent.datetime);
+        Date pluginDate = sdf.parse(pluginEvent.getDatetime());
+        Date plugoutDate = sdf.parse(plugoutEvent.getDatetime());
 //        DateTime pluginDateTime = new DateTime(pluginDate);
 //        DateTime plugoutDateTime = new DateTime(plugoutDate);
 
@@ -33,4 +33,7 @@ public class Cycle extends SugarRecord<Cycle> {
 
         return 1.0f;
     }
+
+    public Event getPluginEvent() { return pluginEvent; }
+    public Event getPlugoutEvent() { return plugoutEvent; }
 }

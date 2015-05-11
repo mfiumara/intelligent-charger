@@ -8,13 +8,13 @@ import java.util.Date;
  * Created by mattia on 04.05.15.
  */
 public class Event extends SugarRecord<Event> {
-    public Integer status;
-    public Integer plugged;
-    public Integer level;
-    public Integer voltage;
-    public Float temperature;
-    public String datetime;
-    public String customStatus;
+    Integer status;
+    Integer plugged;
+    Integer level;
+    Integer voltage;
+    Float temperature;
+    String datetime;
+    String customStatus;
 
 //    public ChargeCurve chargeCurve;
 
@@ -34,4 +34,11 @@ public class Event extends SugarRecord<Event> {
         this.datetime = date;
     }
 
+    public Integer getStatus() { return status; }
+    public Integer getLevel() { return level; }
+    public Integer getPlugged() { return plugged; }
+    public String getCustomStatus() { return customStatus; }
+    public String getDatetime() { return datetime; }
+    public Float getTemperature() { return temperature; }
+    public Integer getVoltage() { return voltage; }
 }

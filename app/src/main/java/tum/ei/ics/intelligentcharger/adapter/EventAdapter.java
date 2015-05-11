@@ -60,9 +60,9 @@ public class EventAdapter extends BaseAdapter {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        holder.level.setText(Integer.toString(list.get(position).level));
-        holder.datetime.setText(list.get(position).datetime);
-        holder.customStatus.setText(list.get(position).customStatus);
+        holder.level.setText(Integer.toString(list.get(position).getLevel()));
+        holder.datetime.setText(list.get(position).getDatetime());
+        holder.customStatus.setText(list.get(position).getCustomStatus());
         return convertView;
     }
 
