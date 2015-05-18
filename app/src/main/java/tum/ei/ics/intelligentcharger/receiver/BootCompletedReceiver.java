@@ -18,10 +18,15 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         // Register plugging and unplugging events after reboot.
         PowerConnectionReceiver powerConnectionReceiver = new PowerConnectionReceiver();
 
+        // Register one broadcast receiver for both plug-in and plug-out events
         IntentFilter powerConnected = new IntentFilter(Intent.ACTION_POWER_CONNECTED);
         IntentFilter powerDisconnected = new IntentFilter(Intent.ACTION_POWER_DISCONNECTED);
-
         context.registerReceiver(powerConnectionReceiver, powerConnected);
         context.registerReceiver(powerConnectionReceiver, powerDisconnected);
+
+        //TODO: Check if charger was connected while the phone was off, register the event if so.
+
+        // If poweroff event ~~~
+
     }
 }

@@ -8,6 +8,14 @@ import android.content.SharedPreferences;
 import android.os.BatteryManager;
 import android.widget.Toast;
 
+import weka.classifiers.Classifier;
+import weka.classifiers.Evaluation;
+import weka.classifiers.bayes.NaiveBayes;
+import weka.core.Attribute;
+import weka.core.FastVector;
+import weka.core.Instance;
+import weka.core.Instances;
+
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.entity.Event;
@@ -60,25 +68,28 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
         // Check battery state to determine type of event.
         if (isCharging) {
-            if (isFull) {
-                // Charging and full: Do nothing
-            } else {
+            if (!isFull) {    // Charging and not full: plug-in event
                 // Check if there is a cycle to save
-                if (startCycleID > 0 && endCycleID > 0) {
-                    // TODO: Check this statement for initial conditions!
+                if ((startCycleID > 0) && (endCycleID > 0)) {
                     // Yes, we remembered the events to save, so now we save it to the database
+                    Event startEvent = Event.findById(Event.class, startCycleID);
                     Event endEvent = Event.findById(Event.class, endCycleID);
-                    Cycle cycle = new Cycle(currEvent, endEvent);
-                    cycle.save();
-                    Toast.makeText(context, "Saved charge cycle to database", Toast.LENGTH_SHORT).show();
-                    // Reset saved events
-                    prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
-                    prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+                    Cycle cycle = new Cycle(startEvent, endEvent);
+                    saveCycle(context, cycle);
                 }
                 // Charging and not full: plug-in event so save this event as the start of a cycle
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
+
+                // Do the predictions!
+                fitPredictor(currEvent);
+                String unplugDatetime = predictUnplugTime(currEvent);
+                String chargeDatetime = predictChargeTime(currEvent);
+
+                //TODO: Start batterychanged broadcast receiver to record the charge curve
+
             }
         } else {
+            //TODO: Stop batterychanged broadcast receiver, we do not need to monitor the charge curve anymore
             if (isFull) {
                 // Not charging but full: either disconnected charger or repetitive cycle
                 // Save this as temporary end cycle but do not save cycle to database yet
@@ -86,10 +97,11 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
             } else {
                 // Not charging and not full: Disconnected charger
                 // Save cycle to database using start_cycle_id and current id
-                Event startEvent = Event.findById(Event.class, startCycleID);
-                Cycle cycle = new Cycle(startEvent, currEvent);
-                cycle.save();
-                Toast.makeText(context, "Saved charge cycle to database", Toast.LENGTH_SHORT).show();
+                if (startCycleID > 0) {
+                    Event startEvent = Event.findById(Event.class, startCycleID);
+                    Cycle cycle = new Cycle(startEvent, currEvent);
+                    saveCycle(context, cycle);
+                }
                 // Reset saved events
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
                 prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
@@ -98,4 +110,33 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // Save data to shared preference file
         prefEdit.apply();
     }
+
+    public String predictUnplugTime(Event event) {
+        return "Foo";
+    }
+
+    public String predictChargeTime(Event event) {
+        return "Bar";
+    }
+
+    public void saveCycle(Context context, Cycle cycle) {
+        // Save cycle to database
+        // TODO: If cycle duration is less then X minutes, do not save to database
+        cycle.save();
+
+        // Notify user of saved charge cycole.
+        Toast.makeText(context, "Charge cycle saved", Toast.LENGTH_SHORT).show();
+
+        // Reset saved events
+        SharedPreferences prefs = context.getSharedPreferences(
+                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        SharedPreferences.Editor prefEdit = prefs.edit();
+        prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
+        prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+    }
+
+    public void fitPredictor(Event event) {
+        ;
+    }
+
 }

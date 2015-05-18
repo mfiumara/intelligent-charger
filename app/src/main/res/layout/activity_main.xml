@@ -8,22 +8,12 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Update Events"
+        android:text="Update List"
         android:id="@+id/updatelist"
         android:onClick="updateList"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Clear Events"
-        android:id="@+id/clear_events"
-        android:onClick="clearEvents"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
 
     <ListView
         android:layout_width="wrap_content"
@@ -33,12 +23,25 @@
         android:layout_alignParentEnd="true"
         android:layout_below="@+id/updatelist" />
 
-    <TextView
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Charging"
-        android:id="@+id/tv_status"
-        android:layout_alignBottom="@+id/updatelist"
-        android:layout_centerHorizontal="true" />
+        android:text="Fit Predictor"
+        android:id="@+id/fit_predict"
+        android:onClick="fitPredictor"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Test Fit"
+        android:id="@+id/test_fit"
+        android:onClick="testWeka"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@+id/updatelist"
+        android:layout_toLeftOf="@+id/fit_predict"
+        android:layout_toStartOf="@+id/fit_predict" />
 
 </RelativeLayout>

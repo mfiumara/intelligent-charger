@@ -1,6 +1,7 @@
 package tum.ei.ics.intelligentcharger.adapter;
 
 import android.content.Context;
+import android.os.BatteryManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,25 +51,48 @@ public class CycleAdapter extends BaseAdapter {
 
         if (convertView == null) {
             convertView = myInflater.inflate(R.layout.item_cycle, parent, false);
+
             holder = new ViewHolder();
-
-
             holder.level1 = (TextView) convertView.findViewById(R.id.level1);
             holder.level2 = (TextView) convertView.findViewById(R.id.level2);
             holder.datetime1 = (TextView) convertView.findViewById(R.id.datetime1);
             holder.datetime2 = (TextView) convertView.findViewById(R.id.datetime2);
-            holder.type  = (TextView) convertView.findViewById(R.id.type);
+            holder.type1  = (TextView) convertView.findViewById(R.id.type1);
+            holder.type2  = (TextView) convertView.findViewById(R.id.type2);
+
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
-        holder.level1.setText(Integer.toString(list.get(position).getPluginEvent().getLevel()));
-        holder.level2.setText(Integer.toString(list.get(position).getPlugoutEvent().getLevel()));
+        // TODO: Null pointer exception if event does not exist. Shouldn't occur at all....
+        Integer level1 = list.get(position).getPluginEvent().getLevel();
+        Integer level2 = list.get(position).getPlugoutEvent().getLevel();
+        holder.level1.setText(Integer.toString(level1));
+        holder.level2.setText(Integer.toString(level2));
         holder.datetime1.setText(list.get(position).getPluginEvent().getDatetime());
         holder.datetime2.setText(list.get(position).getPlugoutEvent().getDatetime());
 
-        // TODO: Convert integer code to usb / ac / unknown string
-        //holder.type.setText(list.get(position).getPluginEvent().getPlugged());
+
+        Integer plugged = list.get(position).getPluginEvent().getPlugged();
+        if (plugged == BatteryManager.BATTERY_PLUGGED_AC) {
+            holder.type1.setText("AC");
+        } else if (plugged == BatteryManager.BATTERY_PLUGGED_USB) {
+            holder.type1.setText("USB");
+        } else if (plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS) {
+            holder.type1.setText("Wireless");
+        } else {
+            holder.type1.setText("");
+        }
+        plugged = list.get(position).getPlugoutEvent().getPlugged();
+        if (plugged == BatteryManager.BATTERY_PLUGGED_AC) {
+            holder.type2.setText("AC");
+        } else if (plugged == BatteryManager.BATTERY_PLUGGED_USB) {
+            holder.type2.setText("USB");
+        } else if (plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS) {
+            holder.type2.setText("Wireless");
+        } else {
+            holder.type2.setText("");
+        }
 
         return convertView;
     }
@@ -78,6 +102,7 @@ public class CycleAdapter extends BaseAdapter {
         TextView level2;
         TextView datetime1;
         TextView datetime2;
-        TextView type;
+        TextView type1;
+        TextView type2;
     }
 }

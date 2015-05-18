@@ -10,13 +10,21 @@
         android:id="@+id/grid">
 
         <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Plugin:    "
+            android:id="@+id/plugin"
+            android:layout_row="0"
+            android:layout_column="0" />
+
+        <TextView
             android:id="@+id/level1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="100"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:layout_row="0"
-            android:layout_column="0" />
+            android:layout_column="1" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -25,7 +33,7 @@
             android:text="%   "
             android:id="@+id/textView"
             android:layout_row="0"
-            android:layout_column="1" />
+            android:layout_column="2" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -34,7 +42,23 @@
             android:textAppearance="?android:attr/textAppearanceMedium"
             android:id="@+id/datetime1"
             android:layout_row="0"
-            android:layout_column="2" />
+            android:layout_column="3" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="USB"
+            android:id="@+id/type1"
+            android:layout_row="0"
+            android:layout_column="13" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Plugout:    "
+            android:id="@+id/plugout"
+            android:layout_row="1"
+            android:layout_column="0" />
 
         <TextView
             android:id="@+id/level2"
@@ -43,7 +67,7 @@
             android:text="100"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:layout_row="1"
-            android:layout_column="0" />
+            android:layout_column="1" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -52,7 +76,7 @@
             android:text="%   "
             android:id="@+id/textView3"
             android:layout_row="1"
-            android:layout_column="1" />
+            android:layout_column="2" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -61,14 +85,14 @@
             android:textAppearance="?android:attr/textAppearanceMedium"
             android:id="@+id/datetime2"
             android:layout_row="1"
-            android:layout_column="2" />
+            android:layout_column="3" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Unknown"
-            android:id="@+id/type"
-            android:layout_row="0"
+            android:text="USB"
+            android:id="@+id/type2"
+            android:layout_row="1"
             android:layout_column="13" />
 
     </GridLayout>
