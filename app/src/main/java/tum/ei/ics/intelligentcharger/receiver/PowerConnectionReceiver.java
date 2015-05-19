@@ -6,26 +6,33 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.BatteryManager;
+import android.util.Log;
 import android.widget.Toast;
 
-import weka.classifiers.Classifier;
-import weka.classifiers.Evaluation;
-import weka.classifiers.bayes.NaiveBayes;
-import weka.core.Attribute;
-import weka.core.FastVector;
-import weka.core.Instance;
-import weka.core.Instances;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.entity.Event;
+import weka.classifiers.Classifier;
+import weka.classifiers.functions.LinearRegression;
+import weka.classifiers.trees.RandomForest;
+import weka.core.Attribute;
+import weka.core.DenseInstance;
+import weka.core.Instance;
+import weka.core.Instances;
 
 /**
  * Created by mattia on 07.05.15.
  */
 public class PowerConnectionReceiver extends BroadcastReceiver {
 
-    public static final String TAG = "PowerConnectedReceiver";
+    public static final String TAG = "PowerConnectionReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -81,7 +88,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
 
                 // Do the predictions!
-                fitPredictor(currEvent);
+                fitPredictor(context, currEvent);
                 String unplugDatetime = predictUnplugTime(currEvent);
                 String chargeDatetime = predictChargeTime(currEvent);
 
@@ -135,8 +142,65 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
     }
 
-    public void fitPredictor(Event event) {
-        ;
+    public void fitPredictor(Context context, Event event) {
+        // Create weka attributes
+        Attribute plugTimeAttribute= new Attribute("Plugtime");
+        Attribute unplugTimeAttribute = new Attribute("UnplugTime");
+
+        ArrayList<Attribute> attributeList = new ArrayList<Attribute>();
+        attributeList.add(plugTimeAttribute);
+        attributeList.add(unplugTimeAttribute);
+
+        // Create training set from list of Cycles
+        List<Cycle> cycles = Cycle.listAll(Cycle.class);
+        Integer N = cycles.size();
+        Instances trainingSet = new Instances("Rel", attributeList, N);
+        trainingSet.setClassIndex(1);
+
+        // Add all cycles to training set
+        for(Cycle cycle : cycles) {
+            // TODO: Base the training set on shifted plugtimes!
+            Event plugEvent = cycle.getPluginEvent();
+            Event unplugEvent = cycle.getPlugoutEvent();
+
+            float plugTime = plugEvent.getTime();
+            float unplugTime = unplugEvent.getTime();
+
+            // Create the weka instances
+            Instance instance = new DenseInstance(2);
+            instance.setValue((Attribute) attributeList.get(0), plugTime);
+            instance.setValue((Attribute) attributeList.get(1), unplugTime);
+            trainingSet.add(instance);
+        }
+
+        // Create the model and build the classifier
+        Classifier linearRegression = (Classifier) new LinearRegression();
+        //Classifier adaBoost = (Classifier) new
+        try {
+            linearRegression.buildClassifier(trainingSet);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Create the vector to be predicted.
+        Instance testInstance = new DenseInstance(2);
+        testInstance.setDataset(trainingSet);
+        testInstance.setValue((Attribute) attributeList.get(0), event.getTime());
+
+        // Output the results
+        try {
+            double output = linearRegression.classifyInstance(testInstance);
+            int hours = (int) Math.floor(output);
+            int minutes = (int) ((output - hours) * 60);
+            Toast.makeText(context, "Unplug prediction: " + hours + ":" + minutes, Toast.LENGTH_LONG).show();
+            Log.v(TAG, "Unplug prediction: " + hours + ":" + minutes);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
     }
+
+
 
 }

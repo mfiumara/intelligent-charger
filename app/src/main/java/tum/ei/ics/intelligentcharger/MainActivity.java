@@ -19,8 +19,8 @@ import java.util.List;
 import tum.ei.ics.intelligentcharger.adapter.CycleAdapter;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.entity.Event;
+
 import weka.classifiers.Classifier;
-import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.trees.RandomForest;
@@ -46,6 +46,7 @@ public class MainActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+
         return true;
     }
 
@@ -131,17 +132,13 @@ public class MainActivity extends ActionBarActivity {
 
             // add the instance
             trainingSet.add(instance);
+
         }
 
         // Create the model
         Classifier randomForest = (Classifier) new RandomForest();
         Classifier linearRegression = (Classifier) new LinearRegression();
 
-        try {
-            randomForest.buildClassifier(trainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         try {
             linearRegression.buildClassifier(trainingSet);
         } catch (Exception e) {
@@ -150,12 +147,12 @@ public class MainActivity extends ActionBarActivity {
 
         // Create a testing set.
         Instance testInstance = new DenseInstance(2);
-        testInstance.setValue((Attribute) attributeList.get(0), 12.1);
         testInstance.setDataset(trainingSet);
+        testInstance.setValue((Attribute) attributeList.get(0), 12.1);
 
         try {
-            double[] output1 = randomForest.distributionForInstance(testInstance);
-            double[] output2 = linearRegression.distributionForInstance(testInstance);
+            double output = linearRegression.classifyInstance(testInstance);
+            Log.v(TAG, "Output: " + Double.toString(output));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -163,79 +160,8 @@ public class MainActivity extends ActionBarActivity {
         long endTime = System.nanoTime();
         float duration = (float) ((endTime - startTime) / 1000000.0);
         Log.v(TAG, "Time taken to fit: " + Float.toString(duration) + " ms.");
+
+
     }
 
-    public void testWeka(View view) {
-        /*
-        Integer N = 15;
-
-        Attribute plugTimeAttribute= new Attribute("plugtime");
-        Attribute unplugTimeAttribute = new Attribute("unplugTime");
-
-        ArrayList<Attribute> attributeList = new ArrayList<Attribute>();
-        attributeList.add(plugTimeAttribute);
-        attributeList.add(unplugTimeAttribute);
-
-        Instances instances = new Instances("Rel", attributeList, N);
-        instances.setClassIndex(1);
-
-        for (Integer i = 0; i < N; i++) {
-            Instance instance = new DenseInstance(2);
-            instance.setValue(plugTimeAttribute, i);
-            instance.setValue(unplugTimeAttribute, i + 5);
-            instances.add(instance);
-        }
-*/
-        // Declare two numeric attributes
-        Attribute Attribute1 = new Attribute("firstNumeric");
-        Attribute Attribute2 = new Attribute("secondNumeric");
-
-        // Declare a nominal attribute along with its values
-        FastVector fvNominalVal = new FastVector(3);
-        fvNominalVal.addElement("blue");
-        fvNominalVal.addElement("gray");
-        fvNominalVal.addElement("black");
-        Attribute Attribute3 = new Attribute("aNominal", fvNominalVal);
-
-        // Declare the class attribute along with its values
-        FastVector fvClassVal = new FastVector(2);
-        fvClassVal.addElement("positive");
-        fvClassVal.addElement("negative");
-        Attribute ClassAttribute = new Attribute("theClass", fvClassVal);
-
-        // Declare the feature vector
-        FastVector fvWekaAttributes = new FastVector(4);
-        fvWekaAttributes.addElement(Attribute1);
-        fvWekaAttributes.addElement(Attribute2);
-        fvWekaAttributes.addElement(Attribute3);
-        fvWekaAttributes.addElement(ClassAttribute);
-
-        Instances trainingSet = new Instances("Rel", fvWekaAttributes, 10);
-        trainingSet.setClassIndex(3);
-        // Create the instance
-        Instance iExample = new DenseInstance(4);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(0), 1.0);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(1), 0.5);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(2), "gray");
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(3), "positive");
-
-        // add the instance
-        trainingSet.add(iExample);
-
-        // Create the model
-        Classifier linearRegression = (Classifier) new LinearRegression();
-        Classifier cModel = (Classifier)new NaiveBayes();
-        try {
-            cModel.buildClassifier(trainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        try {
-            linearRegression.buildClassifier(trainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        Integer foo = 1;
-    }
 }
