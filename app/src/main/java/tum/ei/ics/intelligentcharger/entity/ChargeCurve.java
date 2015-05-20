@@ -15,5 +15,4 @@ public class ChargeCurve extends SugarRecord<ChargeCurve> {
 
     public ChargeCurve() {}
 
-
 }

@@ -14,6 +14,8 @@
     <string name="voltage">VOLTAGE</string>
     <string name="plugtype">PLUGTYPE</string>
     <string name="custom_status">CUSTOM_STATUS</string>
+    <string name="shift">SHIFT</string>
+
     <string name="title_activity_swipe_tab">SwipeTab</string>
 
     <string name="start_cycle_id">START_CYCLE_ID</string>

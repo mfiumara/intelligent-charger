@@ -12,6 +12,7 @@ import android.widget.Toast;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -88,7 +89,9 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
 
                 // Do the predictions!
-                fitPredictor(context, currEvent);
+                updateShift(context);   // Update shifted times
+                fitUnplugPredictor(context, currEvent);   // Fit the predictor using shifted times
+                // Predict!
                 String unplugDatetime = predictUnplugTime(currEvent);
                 String chargeDatetime = predictChargeTime(currEvent);
 
@@ -128,12 +131,13 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
     public void saveCycle(Context context, Cycle cycle) {
         // Save cycle to database
-        // TODO: If cycle duration is less then X minutes, do not save to database
-        cycle.save();
-
-        // Notify user of saved charge cycole.
-        Toast.makeText(context, "Charge cycle saved", Toast.LENGTH_SHORT).show();
-
+        // TODO: If cycle duration is less then X minutes / SOC, do not save to database
+        // For now just check if the SOC is correct, and not the same
+        if (cycle.getPluginEvent().getLevel() < cycle.getPlugoutEvent().getLevel()) {
+            cycle.save();
+            // Notify user of saved charge cycle.
+            Toast.makeText(context, "Charge cycle saved", Toast.LENGTH_SHORT).show();
+        }
         // Reset saved events
         SharedPreferences prefs = context.getSharedPreferences(
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
@@ -142,7 +146,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
     }
 
-    public void fitPredictor(Context context, Event event) {
+    public void fitUnplugPredictor(Context context, Event event) {
         // Create weka attributes
         Attribute plugTimeAttribute= new Attribute("Plugtime");
         Attribute unplugTimeAttribute = new Attribute("UnplugTime");
@@ -154,9 +158,18 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // Create training set from list of Cycles
         List<Cycle> cycles = Cycle.listAll(Cycle.class);
         Integer N = cycles.size();
+        // TODO: Set the minimum number of samples we want to start predicting
+        if ( N < 1) {
+            return;
+        }
         Instances trainingSet = new Instances("Rel", attributeList, N);
         trainingSet.setClassIndex(1);
 
+        // Get amount to shift times with
+        SharedPreferences prefs = context.getSharedPreferences(
+                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        float shift = prefs.getFloat(context.getString(R.string.shift), 0.0f);
+        float transform = 0.0f;
         // Add all cycles to training set
         for(Cycle cycle : cycles) {
             // TODO: Base the training set on shifted plugtimes!
@@ -166,14 +179,18 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
             float plugTime = plugEvent.getTime();
             float unplugTime = unplugEvent.getTime();
 
+            float plugTimeShift = (plugTime - shift) % 24;
+            transform = plugTimeShift > unplugTime ? 24 : - shift;
+            float unplugTimeShift = unplugTime + transform;
+
             // Create the weka instances
             Instance instance = new DenseInstance(2);
-            instance.setValue((Attribute) attributeList.get(0), plugTime);
-            instance.setValue((Attribute) attributeList.get(1), unplugTime);
+            instance.setValue((Attribute) attributeList.get(0), plugTimeShift);
+            instance.setValue((Attribute) attributeList.get(1), unplugTimeShift);
             trainingSet.add(instance);
         }
 
-        // Create the model and build the classifier
+        //TODO: Create better model and build the classifier
         Classifier linearRegression = (Classifier) new LinearRegression();
         //Classifier adaBoost = (Classifier) new
         try {
@@ -189,9 +206,11 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
         // Output the results
         try {
-            double output = linearRegression.classifyInstance(testInstance);
-            int hours = (int) Math.floor(output);
-            int minutes = (int) ((output - hours) * 60);
+            // Do the actual prediction and transform back to an actual time
+            double prediction = linearRegression.classifyInstance(testInstance) - transform;
+            // Convert to hours and minutes
+            int hours = (int) Math.floor(prediction);
+            int minutes = (int) ((prediction - hours) * 60);
             Toast.makeText(context, "Unplug prediction: " + hours + ":" + minutes, Toast.LENGTH_LONG).show();
             Log.v(TAG, "Unplug prediction: " + hours + ":" + minutes);
         } catch (Exception e) {
@@ -200,7 +219,38 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
 
     }
+    public void updateShift(Context context) {
+        //TODO: Implement this method
+        SharedPreferences prefs = context.getSharedPreferences(
+                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        SharedPreferences.Editor prefEdit = prefs.edit();
 
+        // Get all plug events and sort them by plugtime
+        List<Cycle> cycles = Cycle.listAll(Cycle.class);
+        int N = cycles.size();
+        float[] plugEvents = new float[N];
+        int i = 0;
+        for (Cycle cycle : cycles) { plugEvents[i] = cycle.getPluginEvent().getTime();   i++; }
+        Arrays.sort(plugEvents);
 
+        // Calculate the amount to shift the plugtimes with
+        float shift, temp, maxval;
+        shift = temp = maxval = 0.0f;
+        for (i = 0; i < N - 1; i++) {
+            temp = plugEvents[i+1] - plugEvents[i];
+            if (temp > maxval) {
+                maxval = temp;
+                shift = plugEvents[i] + maxval / 2;
+            }
+        }
+        // Check the difference between the last and first event, max time could be in between days
+        temp = plugEvents[0] + (24 - plugEvents[N - 1]);
+        if (temp > maxval) {
+            maxval = temp;
+            shift = (plugEvents[N-1] + maxval / 2) % 24;
+        }
+        Log.v(TAG, "Amount of shift: " + shift);
+        prefEdit.putFloat(context.getString(R.string.shift), shift);
+    }
 
 }
