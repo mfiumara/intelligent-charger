@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.os.BatteryManager;
 
 import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.entity.ChargeCurve;
 import tum.ei.ics.intelligentcharger.entity.Event;
 
 /**
@@ -46,8 +47,11 @@ public class ShutdownReceiver extends BroadcastReceiver {
         String currCustomStatus = (isFull || isCharging)
                 ? context.getString(R.string.charging) : context.getString(R.string.discharging);
         // Create current event
+
+        Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
+        ChargeCurve chargeCurve = ChargeCurve.findById(ChargeCurve.class, curveID);
         Event currEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage,
-                currTemp, currCustomStatus);
+                currTemp, currCustomStatus, chargeCurve);
         // Save event to database
         currEvent.save();
         prefEdit.putLong(context.getString(R.string.shutdown_cycle_id), currEvent.getId());

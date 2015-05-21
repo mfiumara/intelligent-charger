@@ -3,6 +3,7 @@ package tum.ei.ics.intelligentcharger.service;
 import android.app.Service;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -33,6 +34,9 @@ public class BatteryService extends Service {
             // Normally we would do some work here, like download a file.
             registerReceiver(mBatteryChangedReceiver,
                     new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+
+            // Wait for charging to finish
+//            while (charging()) {}
 //            stopSelf(msg.arg1);
         }
     }
@@ -75,5 +79,22 @@ public class BatteryService extends Service {
     @Override
     public void onDestroy() {
 //        Toast.makeText(this, "Service done", Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean charging() {
+        IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent intent = registerReceiver(null, intentFilter);
+        int currStatus = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+        int currLevel  = intent.getIntExtra(BatteryManager.EXTRA_LEVEL,  -1);
+        int currPlugtype = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+        boolean usbCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_USB;
+        boolean acCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_AC;
+        boolean isCharging =
+                currStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        currStatus == BatteryManager.BATTERY_STATUS_FULL ||
+                        usbCharge || acCharge;
+        boolean isFull = currLevel == 100;
+
+        return (!isFull || isCharging);
     }
 }

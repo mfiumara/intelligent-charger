@@ -18,8 +18,10 @@ import java.util.Date;
 import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.entity.ChargeCurve;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.entity.Event;
+import tum.ei.ics.intelligentcharger.service.BatteryService;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.trees.RandomForest;
@@ -34,6 +36,7 @@ import weka.core.Instances;
 public class PowerConnectionReceiver extends BroadcastReceiver {
 
     public static final String TAG = "PowerConnectionReceiver";
+    public static int MIN_SAMPLES = 1;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -64,15 +67,26 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // the charge cycle.
         String currCustomStatus = (isFull || isCharging)
                 ? context.getString(R.string.charging) : context.getString(R.string.discharging);
-        // Create current event
-        Event currEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage,
-                currTemp, currCustomStatus);
-        // Save event to database
-        currEvent.save();
 
         // Get ID's of important events
         Long startCycleID = prefs.getLong(context.getString(R.string.start_cycle_id), -1);
         Long endCycleID = prefs.getLong(context.getString(R.string.end_cycle_id), -1);
+        Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
+
+        // Create charge event and charge curve
+        Event currEvent;
+        ChargeCurve chargeCurve;
+        if (curveID == -1) {
+            chargeCurve = new ChargeCurve(currPlugtype);
+            chargeCurve.save();
+            prefEdit.putLong(context.getString(R.string.curve_id), chargeCurve.getId());
+        } else {
+            chargeCurve = ChargeCurve.findById(ChargeCurve.class, curveID);
+        }
+        // Save event to database
+        currEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage,
+                currTemp, currCustomStatus, chargeCurve);
+        currEvent.save();
 
         // Check battery state to determine type of event.
         if (isCharging) {
@@ -96,14 +110,19 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 String chargeDatetime = predictChargeTime(currEvent);
 
                 //TODO: Start batterychanged broadcast receiver to record the charge curve
-
+                Intent i = new Intent(context, BatteryService.class);
+                context.startService(i);
+            } else {
+                //TODO: Stop batterychanged broadcast receiver
+                Intent i = new Intent(context, BatteryService.class);
+                context.stopService(i);
             }
         } else {
-            //TODO: Stop batterychanged broadcast receiver, we do not need to monitor the charge curve anymore
             if (isFull) {
                 // Not charging but full: either disconnected charger or repetitive cycle
                 // Save this as temporary end cycle but do not save cycle to database yet
                 prefEdit.putLong(context.getString(R.string.end_cycle_id), currEvent.getId());
+                //TODO: Stop batterychanged broadcast receiver and save curve
             } else {
                 // Not charging and not full: Disconnected charger
                 // Save cycle to database using start_cycle_id and current id
@@ -115,6 +134,8 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 // Reset saved events
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
                 prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+                // TODO: Reset charge curve
+
             }
         }
         // Save data to shared preference file
@@ -158,8 +179,8 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // Create training set from list of Cycles
         List<Cycle> cycles = Cycle.listAll(Cycle.class);
         Integer N = cycles.size();
-        // TODO: Set the minimum number of samples we want to start predicting
-        if ( N < 1) {
+
+        if ( N < MIN_SAMPLES) {
             return;
         }
         Instances trainingSet = new Instances("Rel", attributeList, N);
@@ -172,7 +193,6 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         float transform = 0.0f;
         // Add all cycles to training set
         for(Cycle cycle : cycles) {
-            // TODO: Base the training set on shifted plugtimes!
             Event plugEvent = cycle.getPluginEvent();
             Event unplugEvent = cycle.getPlugoutEvent();
 
@@ -220,7 +240,6 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
     }
     public void updateShift(Context context) {
-        //TODO: Implement this method
         SharedPreferences prefs = context.getSharedPreferences(
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
         SharedPreferences.Editor prefEdit = prefs.edit();

@@ -21,6 +21,7 @@
     <string name="start_cycle_id">START_CYCLE_ID</string>
     <string name="end_cycle_id">END_CYCLE_ID</string>
     <string name="shutdown_cycle_id">SHUTDOWN_CYCLE_ID</string>
+    <string name="curve_id">CURVE_ID</string>
 
     <string name="charging">CHARGING</string>
     <string name="discharging">DISCHARGING</string>
