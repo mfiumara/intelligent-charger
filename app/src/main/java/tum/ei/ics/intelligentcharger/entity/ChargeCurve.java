@@ -16,7 +16,7 @@ public class ChargeCurve extends SugarRecord<ChargeCurve> {
         this.plugType = plugType;
     }
 
-    public List<Event> getEvents() {
-        return Event.find(Event.class, "charge_curve = ? order by ? desc", this.getId().toString(), "level");
+    public List<ConnectionEvent> getEvents() {
+        return ConnectionEvent.find(ConnectionEvent.class, "charge_curve = ? order by ? desc", this.getId().toString(), "level");
     }
 }

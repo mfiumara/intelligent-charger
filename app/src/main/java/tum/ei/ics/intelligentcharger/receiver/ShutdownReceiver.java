@@ -9,7 +9,8 @@ import android.os.BatteryManager;
 
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.ChargeCurve;
-import tum.ei.ics.intelligentcharger.entity.Event;
+import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
+
 
 /**
  * Created by mattia on 18.05.15.
@@ -50,8 +51,8 @@ public class ShutdownReceiver extends BroadcastReceiver {
 
         Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
         ChargeCurve chargeCurve = ChargeCurve.findById(ChargeCurve.class, curveID);
-        Event currEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage,
-                currTemp, currCustomStatus, chargeCurve);
+        ConnectionEvent currEvent = new ConnectionEvent(currStatus, currPlugtype, currLevel, currVoltage,
+                currTemp, currCustomStatus);
         // Save event to database
         currEvent.save();
         prefEdit.putLong(context.getString(R.string.shutdown_cycle_id), currEvent.getId());

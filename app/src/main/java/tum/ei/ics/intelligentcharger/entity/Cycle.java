@@ -11,12 +11,12 @@ import java.util.Date;
  */
 public class Cycle extends SugarRecord<Cycle> {
 
-    Event pluginEvent;
-    Event plugoutEvent;
+    ConnectionEvent pluginEvent;
+    ConnectionEvent plugoutEvent;
 
     public Cycle() {}
 
-    public Cycle(Event pluginEvent, Event plugoutEvent) {
+    public Cycle(ConnectionEvent pluginEvent, ConnectionEvent plugoutEvent) {
         this.pluginEvent = pluginEvent;
         this.plugoutEvent = plugoutEvent;
     }
@@ -34,6 +34,6 @@ public class Cycle extends SugarRecord<Cycle> {
         return 1.0f;
     }
 
-    public Event getPluginEvent() { return pluginEvent; }
-    public Event getPlugoutEvent() { return plugoutEvent; }
+    public ConnectionEvent getPluginEvent() { return pluginEvent; }
+    public ConnectionEvent getPlugoutEvent() { return plugoutEvent; }
 }

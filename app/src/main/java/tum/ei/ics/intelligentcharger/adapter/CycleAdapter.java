@@ -12,7 +12,6 @@ import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
-import tum.ei.ics.intelligentcharger.entity.Event;
 
 /**
  * Created by mattia on 11.05.15.

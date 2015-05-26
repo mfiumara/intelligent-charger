@@ -16,7 +16,7 @@ import tum.ei.ics.intelligentcharger.R;
 /**
  * Created by mattia on 04.05.15.
  */
-public class Event extends SugarRecord<Event> {
+public class ConnectionEvent extends SugarRecord<ConnectionEvent> {
     Integer status;
     Integer plugged;
     Integer level;
@@ -24,21 +24,19 @@ public class Event extends SugarRecord<Event> {
     Float temperature;
     String datetime;
     String customStatus;
-    ChargeCurve curve;
 
     @Ignore
     private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-    public Event() {}
-    public Event(Integer status, Integer plugged, Integer level, Integer voltage,
-                 Integer temperature, String customStatus, ChargeCurve curve) {
+    public ConnectionEvent() {}
+    public ConnectionEvent(Integer status, Integer plugged, Integer level, Integer voltage,
+                 Integer temperature, String customStatus) {
         this.status = status;
         this.plugged = plugged;
         this.level = level;
         this.voltage = voltage;
         this.temperature = temperature / 10.0f;
         this.customStatus = customStatus;
-        this.curve = curve;
 
         String date = sdf.format(new Date());
         this.datetime = date;

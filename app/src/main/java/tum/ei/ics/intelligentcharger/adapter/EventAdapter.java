@@ -12,7 +12,7 @@ import java.util.AbstractMap;
 import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
-import tum.ei.ics.intelligentcharger.entity.Event;
+import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 
 /**
  * Created by mattia on 05.05.15.
@@ -20,13 +20,13 @@ import tum.ei.ics.intelligentcharger.entity.Event;
 public class EventAdapter extends BaseAdapter {
 
     private LayoutInflater myInflater;
-    private List<Event> list;
+    private List<ConnectionEvent> list;
 
     public EventAdapter(Context context) {
         myInflater = LayoutInflater.from(context);
     }
 
-    public void setData(List<Event> list) {
+    public void setData(List<ConnectionEvent> list) {
         this.list = list;
     }
 

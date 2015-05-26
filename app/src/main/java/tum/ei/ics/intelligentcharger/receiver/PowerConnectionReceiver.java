@@ -9,22 +9,18 @@ import android.os.BatteryManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
-import tum.ei.ics.intelligentcharger.entity.ChargeCurve;
+import tum.ei.ics.intelligentcharger.entity.Battery;
+import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
-import tum.ei.ics.intelligentcharger.entity.Event;
 import tum.ei.ics.intelligentcharger.service.BatteryService;
+
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
-import weka.classifiers.trees.RandomForest;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -36,7 +32,7 @@ import weka.core.Instances;
 public class PowerConnectionReceiver extends BroadcastReceiver {
 
     public static final String TAG = "PowerConnectionReceiver";
-    public static int MIN_SAMPLES = 1;
+    public static Integer MIN_SAMPLES = 1;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -45,57 +41,28 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
         SharedPreferences.Editor prefEdit = prefs.edit();
 
-        // Get current battery info
-        IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        intent = context.registerReceiver(null, intentFilter);
-        int currStatus = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-        int currLevel  = intent.getIntExtra(BatteryManager.EXTRA_LEVEL,  -1);
-        int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
-        int currVoltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
-        int currPlugtype = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        boolean usbCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_USB;
-        boolean acCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_AC;
-        boolean isCharging =
-                currStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
-                currStatus == BatteryManager.BATTERY_STATUS_FULL ||
-                usbCharge ||
-                acCharge;
-        boolean isFull = currLevel == 100;
-
-        // Check if the phone is either charging or discharging using all information available.
-        // The app considers 100% SOC as charging, as this means it is not yet the end of
-        // the charge cycle.
-        String currCustomStatus = (isFull || isCharging)
-                ? context.getString(R.string.charging) : context.getString(R.string.discharging);
+        // Get battery information
+        Battery battery = new Battery(context);
 
         // Get ID's of important events
         Long startCycleID = prefs.getLong(context.getString(R.string.start_cycle_id), -1);
         Long endCycleID = prefs.getLong(context.getString(R.string.end_cycle_id), -1);
-        Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
 
-        // Create charge event and charge curve
-        Event currEvent;
-        ChargeCurve chargeCurve;
-        if (curveID == -1) {
-            chargeCurve = new ChargeCurve(currPlugtype);
-            chargeCurve.save();
-            prefEdit.putLong(context.getString(R.string.curve_id), chargeCurve.getId());
-        } else {
-            chargeCurve = ChargeCurve.findById(ChargeCurve.class, curveID);
-        }
         // Save event to database
-        currEvent = new Event(currStatus, currPlugtype, currLevel, currVoltage,
-                currTemp, currCustomStatus, chargeCurve);
+        ConnectionEvent currEvent = new ConnectionEvent(
+                battery.getStatus(), battery.getPlugged(),
+                battery.getLevel(), battery.getVoltage(),
+                battery.getTemperature(), battery.getChargingStatus());
         currEvent.save();
 
         // Check battery state to determine type of event.
-        if (isCharging) {
-            if (!isFull) {    // Charging and not full: plug-in event
+        if (battery.isCharging()) {
+            if (!battery.isFull()) {    // Charging and not full: plug-in event
                 // Check if there is a cycle to save
                 if ((startCycleID > 0) && (endCycleID > 0)) {
                     // Yes, we remembered the events to save, so now we save it to the database
-                    Event startEvent = Event.findById(Event.class, startCycleID);
-                    Event endEvent = Event.findById(Event.class, endCycleID);
+                    ConnectionEvent startEvent = ConnectionEvent.findById(ConnectionEvent.class, startCycleID);
+                    ConnectionEvent endEvent = ConnectionEvent.findById(ConnectionEvent.class, endCycleID);
                     Cycle cycle = new Cycle(startEvent, endEvent);
                     saveCycle(context, cycle);
                 }
@@ -103,22 +70,27 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
 
                 // Do the predictions!
-                updateShift(context);   // Update shifted times
-                fitUnplugPredictor(context, currEvent);   // Fit the predictor using shifted times
-                // Predict!
-                String unplugDatetime = predictUnplugTime(currEvent);
-                String chargeDatetime = predictChargeTime(currEvent);
+                // Create training set from list of Cycles
+                List<Cycle> cycles = Cycle.listAll(Cycle.class);
+                Integer N = cycles.size();
+                if ( N < MIN_SAMPLES ) {
+                    prefEdit.apply();
+                    return;
+                }
+                updateShift(context, cycles);   // Update shifted times
+                fitUnplugPredictor(context, currEvent, cycles);   // Fit the predictor using shifted times
+                fitChargePredictor(context);
 
-                //TODO: Start batterychanged broadcast receiver to record the charge curve
+                //TODO: Start batterychanged service to record the charge curve
                 Intent i = new Intent(context, BatteryService.class);
                 context.startService(i);
             } else {
-                //TODO: Stop batterychanged broadcast receiver
+                //TODO: Stop batterychanged service to stop recording the charge curve receiver
                 Intent i = new Intent(context, BatteryService.class);
                 context.stopService(i);
             }
         } else {
-            if (isFull) {
+            if (battery.isFull()) {
                 // Not charging but full: either disconnected charger or repetitive cycle
                 // Save this as temporary end cycle but do not save cycle to database yet
                 prefEdit.putLong(context.getString(R.string.end_cycle_id), currEvent.getId());
@@ -127,7 +99,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 // Not charging and not full: Disconnected charger
                 // Save cycle to database using start_cycle_id and current id
                 if (startCycleID > 0) {
-                    Event startEvent = Event.findById(Event.class, startCycleID);
+                    ConnectionEvent startEvent = ConnectionEvent.findById(ConnectionEvent.class, startCycleID);
                     Cycle cycle = new Cycle(startEvent, currEvent);
                     saveCycle(context, cycle);
                 }
@@ -140,14 +112,6 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         }
         // Save data to shared preference file
         prefEdit.apply();
-    }
-
-    public String predictUnplugTime(Event event) {
-        return "Foo";
-    }
-
-    public String predictChargeTime(Event event) {
-        return "Bar";
     }
 
     public void saveCycle(Context context, Cycle cycle) {
@@ -167,7 +131,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
     }
 
-    public void fitUnplugPredictor(Context context, Event event) {
+    public void fitUnplugPredictor(Context context, ConnectionEvent event, List<Cycle> cycles) {
         // Create weka attributes
         Attribute plugTimeAttribute= new Attribute("Plugtime");
         Attribute unplugTimeAttribute = new Attribute("UnplugTime");
@@ -176,14 +140,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         attributeList.add(plugTimeAttribute);
         attributeList.add(unplugTimeAttribute);
 
-        // Create training set from list of Cycles
-        List<Cycle> cycles = Cycle.listAll(Cycle.class);
-        Integer N = cycles.size();
-
-        if ( N < MIN_SAMPLES) {
-            return;
-        }
-        Instances trainingSet = new Instances("Rel", attributeList, N);
+        Instances trainingSet = new Instances("Rel", attributeList, cycles.size());
         trainingSet.setClassIndex(1);
 
         // Get amount to shift times with
@@ -193,14 +150,14 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         float transform = 0.0f;
         // Add all cycles to training set
         for(Cycle cycle : cycles) {
-            Event plugEvent = cycle.getPluginEvent();
-            Event unplugEvent = cycle.getPlugoutEvent();
+            ConnectionEvent plugEvent = cycle.getPluginEvent();
+            ConnectionEvent unplugEvent = cycle.getPlugoutEvent();
 
             float plugTime = plugEvent.getTime();
             float unplugTime = unplugEvent.getTime();
 
             float plugTimeShift = (plugTime - shift) % 24;
-            transform = plugTimeShift > unplugTime ? 24 : - shift;
+            transform = plugTimeShift > unplugTime - shift ? 24 - shift : - shift;
             float unplugTimeShift = unplugTime + transform;
 
             // Create the weka instances
@@ -212,6 +169,12 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
         //TODO: Create better model and build the classifier
         Classifier linearRegression = (Classifier) new LinearRegression();
+        Classifier decisionTree = (Classifier) new weka.classifiers.trees.REPTree();
+
+//        weka.classifiers.meta.LogitBoost boostingTree = new weka.classifiers.meta.LogitBoost();
+//        boostingTree.setClassifier(decisionTree);
+//        boostingTree.setNumIterations(5);
+
         //Classifier adaBoost = (Classifier) new
         try {
             linearRegression.buildClassifier(trainingSet);
@@ -227,9 +190,9 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // Output the results
         try {
             // Do the actual prediction and transform back to an actual time
-            double prediction = linearRegression.classifyInstance(testInstance) - transform;
+            double prediction = Math.abs(linearRegression.classifyInstance(testInstance) - transform);
             // Convert to hours and minutes
-            int hours = (int) Math.floor(prediction);
+            int hours = (int) Math.floor(prediction) % 24;
             int minutes = (int) ((prediction - hours) * 60);
             Toast.makeText(context, "Unplug prediction: " + hours + ":" + minutes, Toast.LENGTH_LONG).show();
             Log.v(TAG, "Unplug prediction: " + hours + ":" + minutes);
@@ -237,26 +200,28 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
             e.printStackTrace();
         }
 
-
     }
-    public void updateShift(Context context) {
+    public void fitChargePredictor(Context context) {}
+    public void updateShift(Context context, List<Cycle> cycles) {
         SharedPreferences prefs = context.getSharedPreferences(
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
         SharedPreferences.Editor prefEdit = prefs.edit();
 
         // Get all plug events and sort them by plugtime
-        List<Cycle> cycles = Cycle.listAll(Cycle.class);
         int N = cycles.size();
         float[] plugEvents = new float[N];
         int i = 0;
-        for (Cycle cycle : cycles) { plugEvents[i] = cycle.getPluginEvent().getTime();   i++; }
+        for (Cycle cycle : cycles) {
+            plugEvents[i] = cycle.getPluginEvent().getTime();
+            i++;
+        }
         Arrays.sort(plugEvents);
 
         // Calculate the amount to shift the plugtimes with
         float shift, temp, maxval;
         shift = temp = maxval = 0.0f;
         for (i = 0; i < N - 1; i++) {
-            temp = plugEvents[i+1] - plugEvents[i];
+            temp = plugEvents[i + 1] - plugEvents[i];
             if (temp > maxval) {
                 maxval = temp;
                 shift = plugEvents[i] + maxval / 2;
@@ -266,10 +231,11 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         temp = plugEvents[0] + (24 - plugEvents[N - 1]);
         if (temp > maxval) {
             maxval = temp;
-            shift = (plugEvents[N-1] + maxval / 2) % 24;
+            shift = (plugEvents[N - 1] + maxval / 2) % 24;
         }
         Log.v(TAG, "Amount of shift: " + shift);
         prefEdit.putFloat(context.getString(R.string.shift), shift);
+
     }
 
 }
