@@ -8,9 +8,16 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
+
 import java.util.List;
 
+import tum.ei.ics.intelligentcharger.adapter.CurveEventAdapter;
 import tum.ei.ics.intelligentcharger.adapter.CycleAdapter;
+import tum.ei.ics.intelligentcharger.adapter.EventAdapter;
+import tum.ei.ics.intelligentcharger.entity.CurveEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 
 
@@ -50,18 +57,26 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void updateList() {
+        // Use for showing Cycle events in list form
         ListView lv = (ListView) findViewById(R.id.lvList);
         final CycleAdapter cycleAdapter = new CycleAdapter(this);
         List<Cycle> cycles = Cycle.listAll(Cycle.class);
         cycleAdapter.setData(cycles);
         lv.setAdapter(cycleAdapter);
 
-        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                // TODO: Set click method for cycle items so the user can erase useless cycles.
-            }
-        });
+        // Use for showing curve events in list form
+/*        ListView lv = (ListView) findViewById(R.id.lvList);
+        final CurveEventAdapter curveEventAdapter = new CurveEventAdapter(this);
+        List<CurveEvent> events = CurveEvent.listAll(CurveEvent.class);
+        curveEventAdapter.setData(events);
+        lv.setAdapter(curveEventAdapter);*/
+
+        // Use for showing chargepoints in list form
+/*        ListView lv = (ListView) findViewById(R.id.lvList);
+        final CurveEventAdapter curveEventAdapter = new CurveEventAdapter(this);
+        List<CurveEvent> events = CurveEvent.listAll(CurveEvent.class);
+        curveEventAdapter.setData(events);
+        lv.setAdapter(curveEventAdapter);*/
     }
 
     public void updateList(View view) { updateList(); } // I know it's ugly...

@@ -1,61 +1,58 @@
 package tum.ei.ics.intelligentcharger.receiver;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.os.BatteryManager;
+import android.os.SystemClock;
 
 import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.entity.Battery;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
+import tum.ei.ics.intelligentcharger.entity.CurveEvent;
+
 
 /**
  * Created by mattia on 05.05.15.
  */
 public class BootCompletedReceiver extends BroadcastReceiver {
+    // TODO: Fix this ugly define
+    public static Integer ALARM_FREQUENCY = 1;
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        // Register plugging and unplugging events after reboot.
-        PowerConnectionReceiver powerConnectionReceiver = new PowerConnectionReceiver();
-        // Register one broadcast receiver for both plug-in and plug-out events
-        IntentFilter powerConnected = new IntentFilter(Intent.ACTION_POWER_CONNECTED);
-        IntentFilter powerDisconnected = new IntentFilter(Intent.ACTION_POWER_DISCONNECTED);
-        context.registerReceiver(powerConnectionReceiver, powerConnected);
-        context.registerReceiver(powerConnectionReceiver, powerDisconnected);
-
-        // Get current battery info
-        IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        intent = context.registerReceiver(null, intentFilter);
-        int currStatus = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-        int currLevel  = intent.getIntExtra(BatteryManager.EXTRA_LEVEL,  -1);
-        int currPlugtype = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        boolean usbCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_USB;
-        boolean acCharge = currPlugtype == BatteryManager.BATTERY_PLUGGED_AC;
-        boolean isCharging =
-                currStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
-                        currStatus == BatteryManager.BATTERY_STATUS_FULL ||
-                        usbCharge ||
-                        acCharge;
-        boolean isFull = currLevel == 100;
-        // Check if the phone is either charging or discharging using all information available.
-        String currCustomStatus = (isFull || isCharging)
-                ? context.getString(R.string.charging) : context.getString(R.string.discharging);
-
-        // Reset charge events in the case that the phone was (dis)connected while it was turned off
+        // Get battery information
+        Battery battery = new Battery(context);
         SharedPreferences prefs = context.getSharedPreferences(
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
         SharedPreferences.Editor prefEdit = prefs.edit();
-        Long shutDownID = prefs.getLong(context.getString(R.string.shutdown_cycle_id), -1);
-        if (shutDownID > 0) {
-            ConnectionEvent shutDownEvent = ConnectionEvent.findById(ConnectionEvent.class, shutDownID);
-            if (!shutDownEvent.getCustomStatus().equals(currCustomStatus)) {
-                // Reset charge cycles in case events are different
-                prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
-                prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
-                prefEdit.putLong(context.getString(R.string.shutdown_cycle_id), -1);
-            }
+
+        // Delete start cycle if it exists
+        Long startCycleID = prefs.getLong(context.getString(R.string.start_cycle_id), -1);
+        if (startCycleID > 0) {
+            ConnectionEvent event = ConnectionEvent.findById(ConnectionEvent.class, startCycleID);
+            event.delete();
         }
+        // Reset cycle information in shared preferences
+        prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
+        prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+
+        // Reset CurveEvents
+        CurveEvent.deleteAll(CurveEvent.class);
+        if (battery.isCharging()) {
+            // Initialize new curveID
+            Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
+            prefEdit.putLong(context.getString(R.string.curve_id), ++curveID);
+
+            // Start batterychanged alarm if charging to record new charge curve
+            Intent i = new Intent(context, BatteryChangedReceiver.class);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * ALARM_FREQUENCY, pendingIntent);
+        }
+        // Save new shared preferences
+        prefEdit.apply();
     }
 }

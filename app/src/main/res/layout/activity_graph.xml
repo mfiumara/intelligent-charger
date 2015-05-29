@@ -8,18 +8,23 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Update List"
+        android:text="Update Graph"
         android:id="@+id/updatelist"
-        android:onClick="updateList"
+        android:onClick="updateGraph"
         android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true" />
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignRight="@+id/graph"
+        android:layout_alignEnd="@+id/graph" />
 
-    <ListView
+    <com.jjoe64.graphview.GraphView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.50"
-        android:id="@+id/lvList"
-        android:layout_alignParentBottom="true"
-        android:layout_below="@+id/updatelist" />
+        android:layout_weight="1.00"
+        android:id="@+id/graph"
+        android:layout_below="@+id/updatelist"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true" />
 
 </RelativeLayout>

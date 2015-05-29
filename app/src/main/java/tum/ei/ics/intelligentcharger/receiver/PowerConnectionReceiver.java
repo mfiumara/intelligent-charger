@@ -1,11 +1,12 @@
 package tum.ei.ics.intelligentcharger.receiver;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.os.BatteryManager;
+import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -15,9 +16,10 @@ import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.Battery;
+import tum.ei.ics.intelligentcharger.entity.ChargePoint;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
+import tum.ei.ics.intelligentcharger.entity.CurveEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
-import tum.ei.ics.intelligentcharger.service.BatteryService;
 
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
@@ -33,7 +35,8 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
     public static final String TAG = "PowerConnectionReceiver";
     public static Integer MIN_SAMPLES = 1;
-
+    // TODO: Fix this ugly define
+    public static Integer ALARM_FREQUENCY = 1;
     @Override
     public void onReceive(Context context, Intent intent) {
         // Open shared preference file
@@ -69,6 +72,17 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 // Charging and not full: plug-in event so save this event as the start of a cycle
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
 
+                // Start batterychanged alarm to record the charge curve every X minutes
+                Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
+                prefEdit.putLong(context.getString(R.string.curve_id), ++curveID);
+
+                // Setup the alarm
+                Intent i = new Intent(context, BatteryChangedReceiver.class);
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
+                AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                // Trigger the alarm for the amount of minutes defined
+                alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * ALARM_FREQUENCY, pendingIntent);
+
                 // Do the predictions!
                 // Create training set from list of Cycles
                 List<Cycle> cycles = Cycle.listAll(Cycle.class);
@@ -79,22 +93,23 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 }
                 updateShift(context, cycles);   // Update shifted times
                 fitUnplugPredictor(context, currEvent, cycles);   // Fit the predictor using shifted times
-                fitChargePredictor(context);
 
-                //TODO: Start batterychanged service to record the charge curve
-                Intent i = new Intent(context, BatteryService.class);
-                context.startService(i);
-            } else {
-                //TODO: Stop batterychanged service to stop recording the charge curve receiver
-                Intent i = new Intent(context, BatteryService.class);
-                context.stopService(i);
+                List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
+                N = cycles.size();
+                if ( N < MIN_SAMPLES ) {
+                    prefEdit.apply();
+                    return;
+                }
+//                fitChargePredictor(context, battery.getLevel(), 100);
             }
         } else {
+            Intent i = new Intent(context, BatteryChangedReceiver.class);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             if (battery.isFull()) {
                 // Not charging but full: either disconnected charger or repetitive cycle
                 // Save this as temporary end cycle but do not save cycle to database yet
                 prefEdit.putLong(context.getString(R.string.end_cycle_id), currEvent.getId());
-                //TODO: Stop batterychanged broadcast receiver and save curve
             } else {
                 // Not charging and not full: Disconnected charger
                 // Save cycle to database using start_cycle_id and current id
@@ -106,8 +121,11 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 // Reset saved events
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
                 prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
-                // TODO: Reset charge curve
 
+                // Reset charge curve and don't save it as battery is not fully charged
+                CurveEvent.deleteAll(CurveEvent.class);
+                // Stop recording the charge curve here
+                alarmManager.cancel(pendingIntent);
             }
         }
         // Save data to shared preference file
@@ -194,14 +212,66 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
             // Convert to hours and minutes
             int hours = (int) Math.floor(prediction) % 24;
             int minutes = (int) ((prediction - hours) * 60);
-            Toast.makeText(context, "Unplug prediction: " + hours + ":" + minutes, Toast.LENGTH_LONG).show();
-            Log.v(TAG, "Unplug prediction: " + hours + ":" + minutes);
+            String stringMinutes = minutes < 10 ? ("0" + Integer.toString(minutes)) : Integer.toString(minutes);
+            Toast.makeText(context, "Unplug prediction: " + hours + ":" + stringMinutes, Toast.LENGTH_LONG).show();
+            Log.v(TAG, "Unplug prediction: " + hours + ":" + stringMinutes);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
     }
-    public void fitChargePredictor(Context context) {}
+    public void fitChargePredictor(Context context, double startSOC, double endSOC) {
+        // Create weka attributes
+        Attribute LevelAttribute = new Attribute("Level");
+        Attribute TimeAttribute= new Attribute("Time");
+
+        ArrayList<Attribute> attributeList = new ArrayList<Attribute>();
+        attributeList.add(LevelAttribute);
+        attributeList.add(TimeAttribute);
+
+        // Get curve ID
+        SharedPreferences prefs = context.getSharedPreferences(
+                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
+        List<ChargePoint> chargePoints = ChargePoint.find(ChargePoint.class, "curveID = ?", Long.toString(curveID));
+
+        Instances trainingSet = new Instances("Rel", attributeList, chargePoints.size());
+        trainingSet.setClassIndex(1);
+
+        // Add all chargepoints to training set
+        for(ChargePoint chargePoint : chargePoints) {
+            // TODO: Check for USB / AC charges and build two sepearte training sets
+            // Create the weka instances
+            Instance instance = new DenseInstance(2);
+            instance.setValue((Attribute) attributeList.get(0), chargePoint.getLevel());
+            instance.setValue((Attribute) attributeList.get(1), chargePoint.getTime());
+            trainingSet.add(instance);
+        }
+
+        Classifier linearRegression = (Classifier) new LinearRegression();
+
+        try {
+            linearRegression.buildClassifier(trainingSet);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Create the vector to be predicted.
+        Instance testInstance = new DenseInstance(2);
+        testInstance.setDataset(trainingSet);
+        // TODO: Enter start SOC and end SOC here
+        testInstance.setValue((Attribute) attributeList.get(0), startSOC);
+
+        // Output the results
+        try {
+            // Do the actual prediction and transform back to an actual time
+            double prediction = Math.abs(linearRegression.classifyInstance(testInstance));
+            Toast.makeText(context, "Time until full charge: " + prediction, Toast.LENGTH_LONG).show();
+            Log.v(TAG, "Time until full charge: " + prediction);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     public void updateShift(Context context, List<Cycle> cycles) {
         SharedPreferences prefs = context.getSharedPreferences(
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);

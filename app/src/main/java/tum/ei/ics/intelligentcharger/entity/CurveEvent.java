@@ -1,5 +1,6 @@
 package tum.ei.ics.intelligentcharger.entity;
 
+import com.orm.SugarRecord;
 import com.orm.dsl.Ignore;
 
 import java.text.ParseException;
@@ -10,11 +11,12 @@ import java.util.Date;
 /**
  * Created by mattia on 26.05.15.
  */
-public class CurveEvent {
+public class CurveEvent extends SugarRecord<CurveEvent> {
     Integer status;
     Integer plugged;
     Integer level;
     Integer voltage;
+    Long curveID;
     Float temperature;
     String datetime;
     String customStatus;
@@ -24,13 +26,14 @@ public class CurveEvent {
 
     public CurveEvent() {}
     public CurveEvent(Integer status, Integer plugged, Integer level, Integer voltage,
-                           Integer temperature, String customStatus) {
+                           Integer temperature, String customStatus, Long curveID) {
         this.status = status;
         this.plugged = plugged;
         this.level = level;
         this.voltage = voltage;
         this.temperature = temperature / 10.0f;
         this.customStatus = customStatus;
+        this.curveID = curveID;
 
         String date = sdf.format(new Date());
         this.datetime = date;
@@ -57,4 +60,7 @@ public class CurveEvent {
     public String getDatetime() { return datetime; }
     public Float getTemperature() { return temperature; }
     public Integer getVoltage() { return voltage; }
+    public Long getCurveID() {
+        return curveID;
+    }
 }
