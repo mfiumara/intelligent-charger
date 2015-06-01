@@ -1,32 +1,24 @@
-package tum.ei.ics.intelligentcharger;
+package tum.ei.ics.intelligentcharger.fragment;
 
-import android.content.Context;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.os.BatteryManager;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Toast;
+import android.view.ViewGroup;
 
 import com.jjoe64.graphview.DefaultLabelFormatter;
 import com.jjoe64.graphview.GraphView;
-import com.jjoe64.graphview.series.BarGraphSeries;
 import com.jjoe64.graphview.series.DataPoint;
-import com.jjoe64.graphview.series.DataPointInterface;
 import com.jjoe64.graphview.series.LineGraphSeries;
-import com.jjoe64.graphview.series.PointsGraphSeries;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.ChargePoint;
-import tum.ei.ics.intelligentcharger.entity.CurveEvent;
-import tum.ei.ics.intelligentcharger.entity.Cycle;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
 import weka.core.Attribute;
@@ -34,51 +26,49 @@ import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 
-
 /**
- * Created by mattia on 27.05.15.
+ * Created by mattia on 01.06.15.
  */
-public class CurveActivity extends ActionBarActivity {
+public class ChargeCurveFragment extends Fragment {
+    /**
+     * The fragment argument representing the section number for this
+     * fragment.
+     */
+    private static final String ARG_SECTION_NUMBER = "section_number";
+    private static final String TAG = "Fragment";
+    /**
+     * Returns a new instance of this fragment for the given section
+     * number.
+     */
+    public static ChargeCurveFragment newInstance(int sectionNumber) {
+        ChargeCurveFragment fragment = new ChargeCurveFragment();
+        Bundle args = new Bundle();
+        args.putInt(ARG_SECTION_NUMBER, sectionNumber);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
-    private static final String TAG = "MainActivity";
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_graph);
-
-        this.updateGraph();
+    public ChargeCurveFragment() {
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
 
-        return true;
+        if (savedInstanceState == null) { savedInstanceState = this.getArguments(); }
+
+        View rootView = inflater.inflate(R.layout.fragment_graph, container, false);
+
+        update(rootView);
+        return rootView;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    public void updateGraph() {
+    public void update(View view) {
         // Get all unique charge curve IDs
         List<ChargePoint> curveIDs = ChargePoint.findWithQuery(ChargePoint.class, "Select Distinct curve_id from charge_point");
         Integer N = curveIDs.size();
 
-        GraphView graph = (GraphView) findViewById(R.id.graph);
+        GraphView graph = (GraphView) view.findViewById(R.id.graph);
 
         if (N > 1) {
             for (ChargePoint curve : curveIDs) {
@@ -126,10 +116,9 @@ public class CurveActivity extends ActionBarActivity {
             });
         }
         double[] curvePrediction = plotChargePrediction(graph);
+        graph.setTitle("Charge Time vs Battery Level");
 
     }
-
-    public void updateGraph(View view) { updateGraph(); } // I know it's ugly...
     public double[] plotChargePrediction(GraphView graph) {
         // Choose where to split our predictors
         double SPLIT = 75;

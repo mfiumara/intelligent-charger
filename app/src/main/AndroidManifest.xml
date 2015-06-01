@@ -12,11 +12,12 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme"
         tools:replace="android:icon,android:theme" >
+
+        <!-- Activities -->
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name" >
         </activity>
-
         <activity
             android:name=".GraphActivity"
             android:label="@string/app_name" >
@@ -24,12 +25,17 @@
         <activity
             android:name=".CurveActivity"
             android:label="@string/app_name" >
+        </activity>
+        <activity
+            android:name=".SwipeActivity"
+            android:label="@string/title_activity_swipe" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- Broadcast Receivers -->
         <receiver android:name=".receiver.BootCompletedReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -41,17 +47,15 @@
                 <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
             </intent-filter>
         </receiver>
-
-        <receiver android:name=".receiver.ShutdownReceiver">
+        <receiver android:name=".receiver.ShutdownReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.ACTION_SHUTDOWN" />
             </intent-filter>
         </receiver>
-
-        <receiver android:name=".receiver.BatteryChangedReceiver">
-
+        <receiver android:name=".receiver.BatteryChangedReceiver" >
         </receiver>
 
+        <!-- Other -->
         <meta-data
             android:name="DATABASE"
             android:value="BatteryData.db" />
@@ -64,7 +68,6 @@
         <meta-data
             android:name="DOMAIN_PACKAGE_NAME"
             android:value="tum.ei.ics.intelligentcharger.entity" />
-
 
     </application>
 

@@ -21,8 +21,10 @@ import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.CurveEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 
+import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
+import weka.classifiers.lazy.IBk;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -92,7 +94,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                     return;
                 }
                 updateShift(context, cycles);   // Update shifted times
-                fitUnplugPredictor(context, currEvent, cycles);   // Fit the predictor using shifted times
+                double unplugTime = fitUnplugPredictor(context, currEvent, cycles);   // Fit the predictor using shifted times
 
                 List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
                 N = cycles.size();
@@ -100,7 +102,10 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                     prefEdit.apply();
                     return;
                 }
-//                fitChargePredictor(context, battery.getLevel(), 100);
+                double chargeTime = fitChargePredictor(context, battery.getLevel(), maxSOCBound());
+
+                //TODO: Start the alarm and light an LED! And watch out for time between days!
+                double chargeStart = unplugTime - chargeTime;
             }
         } else {
             Intent i = new Intent(context, BatteryChangedReceiver.class);
@@ -147,9 +152,10 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         SharedPreferences.Editor prefEdit = prefs.edit();
         prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
         prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
+        prefEdit.apply();
     }
 
-    public void fitUnplugPredictor(Context context, ConnectionEvent event, List<Cycle> cycles) {
+    public double fitUnplugPredictor(Context context, ConnectionEvent event, List<Cycle> cycles) {
         // Create weka attributes
         Attribute plugTimeAttribute= new Attribute("Plugtime");
         Attribute unplugTimeAttribute = new Attribute("UnplugTime");
@@ -209,18 +215,17 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         try {
             // Do the actual prediction and transform back to an actual time
             double prediction = Math.abs(linearRegression.classifyInstance(testInstance) - transform);
-            // Convert to hours and minutes
-            int hours = (int) Math.floor(prediction) % 24;
-            int minutes = (int) ((prediction - hours) * 60);
-            String stringMinutes = minutes < 10 ? ("0" + Integer.toString(minutes)) : Integer.toString(minutes);
-            Toast.makeText(context, "Unplug prediction: " + hours + ":" + stringMinutes, Toast.LENGTH_LONG).show();
-            Log.v(TAG, "Unplug prediction: " + hours + ":" + stringMinutes);
+            Toast.makeText(context, "Unplug prediction: " + timeToString(prediction), Toast.LENGTH_LONG).show();
+            Log.v(TAG, "Unplug prediction: " + timeToString(prediction));
+            return prediction;
         } catch (Exception e) {
             e.printStackTrace();
         }
-
+        return -1;
     }
-    public void fitChargePredictor(Context context, double startSOC, double endSOC) {
+    public double fitChargePredictor(Context context, double startSOC, double endSOC) {
+        // Choose where to split our predictors
+        double SPLIT = 75;
         // Create weka attributes
         Attribute LevelAttribute = new Attribute("Level");
         Attribute TimeAttribute= new Attribute("Time");
@@ -229,11 +234,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         attributeList.add(LevelAttribute);
         attributeList.add(TimeAttribute);
 
-        // Get curve ID
-        SharedPreferences prefs = context.getSharedPreferences(
-                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-        long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
-        List<ChargePoint> chargePoints = ChargePoint.find(ChargePoint.class, "curveID = ?", Long.toString(curveID));
+        List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
 
         Instances trainingSet = new Instances("Rel", attributeList, chargePoints.size());
         trainingSet.setClassIndex(1);
@@ -257,20 +258,24 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         }
 
         // Create the vector to be predicted.
-        Instance testInstance = new DenseInstance(2);
-        testInstance.setDataset(trainingSet);
+        Instance startInstance = new DenseInstance(2); startInstance.setDataset(trainingSet);
+        Instance endInstance = new DenseInstance(2); endInstance.setDataset(trainingSet);
+
         // TODO: Enter start SOC and end SOC here
-        testInstance.setValue((Attribute) attributeList.get(0), startSOC);
+        startInstance.setValue((Attribute) attributeList.get(0), startSOC);
+        endInstance.setValue((Attribute) attributeList.get(0), endSOC);
 
         // Output the results
         try {
             // Do the actual prediction and transform back to an actual time
-            double prediction = Math.abs(linearRegression.classifyInstance(testInstance));
-            Toast.makeText(context, "Time until full charge: " + prediction, Toast.LENGTH_LONG).show();
-            Log.v(TAG, "Time until full charge: " + prediction);
+            double prediction = Math.abs(linearRegression.classifyInstance(startInstance));
+            Toast.makeText(context, "Time until full charge: " + timeToString(prediction), Toast.LENGTH_LONG).show();
+            Log.v(TAG, "Time until full charge: " + timeToString(prediction));
+            return prediction;
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return -1;
     }
     public void updateShift(Context context, List<Cycle> cycles) {
         SharedPreferences prefs = context.getSharedPreferences(
@@ -307,5 +312,16 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         prefEdit.putFloat(context.getString(R.string.shift), shift);
 
     }
+    public double maxSOCBound() {
+        //TODO: Implement the max SOC bound algorithm!
+        Integer BATCH_SIZE = 10;
 
+        return 100;
+    }
+    public String timeToString(double time) {
+        int hours = (int) Math.floor(time) % 24;
+        int minutes = (int) ((time - hours) * 60);
+        String stringMinutes = minutes < 10 ? ("0" + Integer.toString(minutes)) : Integer.toString(minutes);
+        return hours + ":" + stringMinutes;
+    }
 }

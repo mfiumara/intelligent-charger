@@ -36,21 +36,23 @@ public class BatteryChangedReceiver extends BroadcastReceiver {
 
         // Only save event if it is a full cycle
         if (battery.isFull()){
-//        if (battery.getLevel() == 14){
             // Save this charge cycle into the curve map
             List<CurveEvent> events = CurveEvent.listAll(CurveEvent.class);
             CurveEvent lastEvent = event;
             float time = 0.0f;
             for (CurveEvent curveEvent : events) {
-                time = curveEvent.getTime() < lastEvent.getTime() ?
-                        - (lastEvent.getTime() - curveEvent.getTime()) :
-                        curveEvent.getTime() - 24 - lastEvent.getTime();
-                ChargePoint chargePoint = new ChargePoint(curveEvent.getPlugged(), time,
-                        curveEvent.getLevel(), curveEvent.getVoltage(), curveID);
-                chargePoint.save();
+                if (curveEvent != lastEvent) {
+                    time = curveEvent.getTime() < lastEvent.getTime() ?
+                            -(lastEvent.getTime() - curveEvent.getTime()) :
+                            curveEvent.getTime() - 24 - lastEvent.getTime();
+                    ChargePoint chargePoint = new ChargePoint(curveEvent.getPlugged(), time,
+                            curveEvent.getLevel(), curveEvent.getVoltage(), curveID);
+                    chargePoint.save();
+                }
             }
             // Make sure the last point is 100% at time 0 to ensure alignment
             ChargePoint chargePoint = new ChargePoint(event.getPlugged(), 0.0f, 100, event.getVoltage(), curveID);
+            chargePoint.save();
             // Clear CurveEvent Database
             CurveEvent.deleteAll(CurveEvent.class);
 
