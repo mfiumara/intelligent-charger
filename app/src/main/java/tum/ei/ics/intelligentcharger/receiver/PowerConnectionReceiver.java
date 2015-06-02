@@ -10,6 +10,8 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.google.common.primitives.Ints;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -53,7 +55,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         Long startCycleID = prefs.getLong(context.getString(R.string.start_cycle_id), -1);
         Long endCycleID = prefs.getLong(context.getString(R.string.end_cycle_id), -1);
 
-        // Save event to database
+        // Save current event to database
         ConnectionEvent currEvent = new ConnectionEvent(
                 battery.getStatus(), battery.getPlugged(),
                 battery.getLevel(), battery.getVoltage(),
@@ -78,7 +80,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
                 prefEdit.putLong(context.getString(R.string.curve_id), ++curveID);
 
-                // Setup the alarm
+                // Setup the alarm to record the charge curve
                 Intent i = new Intent(context, BatteryChangedReceiver.class);
                 PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
                 AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
@@ -104,8 +106,14 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 }
                 double chargeTime = fitChargePredictor(context, battery.getLevel(), maxSOCBound());
 
-                //TODO: Start the alarm and light an LED! And watch out for time between days!
-                double chargeStart = unplugTime - chargeTime;
+                //TODO: Set the notification! And watch out for time between days!
+                double chargeStart = unplugTime < chargeTime ? unplugTime - chargeTime + 24
+                                                    : unplugTime - chargeTime;
+                // Setup the alarm
+                i = new Intent(context, ChargeReceiver.class);
+                pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
+                alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + (long)chargeStart, pendingIntent);
             }
         } else {
             Intent i = new Intent(context, BatteryChangedReceiver.class);
@@ -313,8 +321,28 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
     }
     public double maxSOCBound() {
-        //TODO: Implement the max SOC bound algorithm!
         Integer BATCH_SIZE = 10;
+        float error = 0;
+        float maxError = 0.2f;
+
+        // Get last X results
+       /* List<Cycle> cycles = Cycle.findWithQuery(Cycle.class, "Select top ? * from Cycle", Integer.toString(BATCH_SIZE));
+        Cycle lastCycle = cycles.get(0);
+        int[] deltaSOCArray = new int[cycles.size() - 1];
+        for (int i = 1; i < cycles.size(); i++) {
+            Cycle currentCycle = cycles.get(i);
+            Integer deltaSOC = lastCycle.getPlugoutEvent().getLevel()
+                            - currentCycle.getPluginEvent().getLevel();
+            deltaSOCArray[i - 1] = deltaSOC;
+            lastCycle = cycles.get(i);
+            Log.v(TAG, cycles.get(i).getPluginEvent().getDatetime());
+        }
+
+        for (int i = 0; i < cycles.size() - 1; i++) {
+            if (i > BATCH_SIZE) {
+                Ints.max(deltaSOCArray);
+            }
+        }*/
 
         return 100;
     }

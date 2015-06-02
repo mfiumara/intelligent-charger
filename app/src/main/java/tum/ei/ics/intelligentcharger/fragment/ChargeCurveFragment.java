@@ -21,10 +21,13 @@ import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.ChargePoint;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
+import weka.classifiers.meta.FilteredClassifier;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.AddExpression;
 
 /**
  * Created by mattia on 01.06.15.
@@ -59,6 +62,13 @@ public class ChargeCurveFragment extends Fragment {
 
         View rootView = inflater.inflate(R.layout.fragment_graph, container, false);
 
+        // Use this to clean up charge curve of wrongly saved chargepoints
+        // Should not be needed in final version
+/*        List<ChargePoint> filter = ChargePoint.find(ChargePoint.class, "time < ?", "-15");
+        for (ChargePoint point : filter) {
+            point.delete();
+        }*/
+
         update(rootView);
         return rootView;
     }
@@ -85,7 +95,7 @@ public class ChargeCurveFragment extends Fragment {
                 if (chargePoints.get(0).getPlugType() == BatteryManager.BATTERY_PLUGGED_AC) {
                     cyclePoints.setColor(Color.BLUE);
                 } else {
-                    cyclePoints.setColor(Color.GREEN);
+                    cyclePoints.setColor(Color.RED);
                 }
                 cyclePoints.setThickness(8);
                 graph.addSeries(cyclePoints);
@@ -95,7 +105,7 @@ public class ChargeCurveFragment extends Fragment {
 
             // Format axes
             graph.getViewport().setXAxisBoundsManual(true);
-            graph.getViewport().setMinX(-4);
+            graph.getViewport().setMinX(-6);
             graph.getViewport().setMaxX(0);
             graph.getViewport().setYAxisBoundsManual(true);
             graph.getViewport().setMinY(0);
@@ -126,13 +136,13 @@ public class ChargeCurveFragment extends Fragment {
         Attribute LevelAttribute = new Attribute("Level");
         Attribute TimeAttribute= new Attribute("Time");
 
-        ArrayList<Attribute> attributeList = new ArrayList<Attribute>();
-        attributeList.add(LevelAttribute);
-        attributeList.add(TimeAttribute);
+        ArrayList<Attribute> firstOrderFeatures = new ArrayList<Attribute>();
+        firstOrderFeatures.add(LevelAttribute);
+        firstOrderFeatures.add(TimeAttribute);
 
         List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
 
-        Instances trainingSet = new Instances("Rel", attributeList, chargePoints.size());
+        Instances trainingSet = new Instances("Rel", firstOrderFeatures, chargePoints.size());
         trainingSet.setClassIndex(1);
 
         // Add all chargepoints to training set
@@ -140,31 +150,38 @@ public class ChargeCurveFragment extends Fragment {
             // TODO: Check for USB / AC charges and build two sepearte training sets
             // Create the weka instances
             Instance instance = new DenseInstance(2);
-            instance.setValue((Attribute) attributeList.get(0), chargePoint.getLevel());
-            instance.setValue((Attribute) attributeList.get(1), chargePoint.getTime());
+            instance.setValue((Attribute) firstOrderFeatures.get(0), chargePoint.getLevel());
+            instance.setValue((Attribute) firstOrderFeatures.get(1), chargePoint.getTime());
             trainingSet.add(instance);
         }
 
+        // Second Order Filter
+        AddExpression addExpression = new AddExpression();
+        addExpression.setExpression("a1^2");
+
+        // Base Classifier
         Classifier linearRegression = (Classifier) new LinearRegression();
 
+        // Meta Classifier
+        FilteredClassifier filteredClassifier = (FilteredClassifier) new FilteredClassifier();
+        filteredClassifier.setFilter(addExpression);
+        filteredClassifier.setClassifier(linearRegression);
+
         try {
-            linearRegression.buildClassifier(trainingSet);
+            filteredClassifier.buildClassifier(trainingSet);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         // Create the vector to be predicted.
         double[] predictionCurve = new double[101];
-
         for (int i = 0; i <= 100; i++) {
             Instance instance = new DenseInstance(2);
             instance.setDataset(trainingSet);
-            instance.setValue((Attribute) attributeList.get(0), i);
-
+            instance.setValue((Attribute) firstOrderFeatures.get(0), i);
             // Output the results
             try {
                 // Do the actual prediction and transform back to an actual time
-                double prediction = Math.abs(linearRegression.classifyInstance(instance));
+                double prediction = Math.abs(filteredClassifier.classifyInstance(instance));
                 predictionCurve[i] = prediction;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -174,7 +191,6 @@ public class ChargeCurveFragment extends Fragment {
         DataPoint[] curveTime = new DataPoint[101];
         for (int i = 0 ; i <= 100; i++) {
             curveTime[i] = new DataPoint(-predictionCurve[i], i);
-            Log.v(TAG, Integer.toString(i) + "%: " + String.valueOf(timeToString(predictionCurve[i])));
         }
         // Add them to the graph view
         LineGraphSeries<DataPoint> cyclePoints = new LineGraphSeries<DataPoint>(curveTime);

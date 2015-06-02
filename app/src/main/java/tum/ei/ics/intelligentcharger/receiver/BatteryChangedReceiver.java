@@ -41,13 +41,15 @@ public class BatteryChangedReceiver extends BroadcastReceiver {
             CurveEvent lastEvent = event;
             float time = 0.0f;
             for (CurveEvent curveEvent : events) {
-                if (curveEvent != lastEvent) {
+                if (curveEvent.getTime() != lastEvent.getTime()) {
                     time = curveEvent.getTime() < lastEvent.getTime() ?
                             -(lastEvent.getTime() - curveEvent.getTime()) :
                             curveEvent.getTime() - 24 - lastEvent.getTime();
                     ChargePoint chargePoint = new ChargePoint(curveEvent.getPlugged(), time,
                             curveEvent.getLevel(), curveEvent.getVoltage(), curveID);
                     chargePoint.save();
+                } else {
+                    break;
                 }
             }
             // Make sure the last point is 100% at time 0 to ensure alignment

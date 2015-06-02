@@ -30,4 +30,11 @@
         android:id="@+id/smart_charging"
         android:checked="false" />
 
+    <SeekBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/min_samples"
+        android:max="100"
+        android:indeterminate="false" />
+
 </LinearLayout>
