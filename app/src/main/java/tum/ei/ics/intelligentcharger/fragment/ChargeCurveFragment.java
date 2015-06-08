@@ -1,6 +1,7 @@
 package tum.ei.ics.intelligentcharger.fragment;
 
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -19,6 +20,7 @@ import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.ChargePoint;
+import tum.ei.ics.intelligentcharger.predictor.ChargeTimePredictor;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.meta.FilteredClassifier;
@@ -69,11 +71,11 @@ public class ChargeCurveFragment extends Fragment {
             point.delete();
         }*/
 
-        update(rootView);
+        plotChargePoints(rootView);
         return rootView;
     }
 
-    public void update(View view) {
+    public void plotChargePoints(View view) {
         // Get all unique charge curve IDs
         List<ChargePoint> curveIDs = ChargePoint.findWithQuery(ChargePoint.class, "Select Distinct curve_id from charge_point");
         Integer N = curveIDs.size();
@@ -92,15 +94,15 @@ public class ChargeCurveFragment extends Fragment {
                 }
                 // Add them to the graph view
                 LineGraphSeries<DataPoint> cyclePoints = new LineGraphSeries<DataPoint>(values);
+                Paint paint = new Paint();
                 if (chargePoints.get(0).getPlugType() == BatteryManager.BATTERY_PLUGGED_AC) {
-                    cyclePoints.setColor(Color.BLUE);
+                    paint.setColor(Color.BLUE);
                 } else {
-                    cyclePoints.setColor(Color.RED);
+                    paint.setColor(Color.RED);
                 }
-                cyclePoints.setThickness(8);
+                paint.setStyle(Paint.Style.STROKE); paint.setAlpha(50); paint.setStrokeWidth(5);
+                cyclePoints.setCustomPaint(paint);
                 graph.addSeries(cyclePoints);
-                String plugged = chargePoints.get(0).getPlugType() == BatteryManager.BATTERY_PLUGGED_AC ? "AC" : "USB";
-                Log.v(TAG, plugged);
             }
 
             // Format axes
@@ -124,86 +126,33 @@ public class ChargeCurveFragment extends Fragment {
                     }
                 }
             });
-        }
-        double[] curvePrediction = plotChargePrediction(graph);
-        graph.setTitle("Charge Time vs Battery Level");
 
-    }
-    public double[] plotChargePrediction(GraphView graph) {
-        // Choose where to split our predictors
-        double SPLIT = 75;
-        // Create weka attributes
-        Attribute LevelAttribute = new Attribute("Level");
-        Attribute TimeAttribute= new Attribute("Time");
+            ChargeTimePredictor USBChargeTimePredictor =
+                    new ChargeTimePredictor(ChargePoint.find(ChargePoint.class, "plug_type = ?",
+                            Integer.toString(BatteryManager.BATTERY_PLUGGED_USB)));
+            ChargeTimePredictor ACChargeTimePredictor =
+                    new ChargeTimePredictor(ChargePoint.find(ChargePoint.class, "plug_type = ?",
+                            Integer.toString(BatteryManager.BATTERY_PLUGGED_AC)));
 
-        ArrayList<Attribute> firstOrderFeatures = new ArrayList<Attribute>();
-        firstOrderFeatures.add(LevelAttribute);
-        firstOrderFeatures.add(TimeAttribute);
-
-        List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
-
-        Instances trainingSet = new Instances("Rel", firstOrderFeatures, chargePoints.size());
-        trainingSet.setClassIndex(1);
-
-        // Add all chargepoints to training set
-        for(ChargePoint chargePoint : chargePoints) {
-            // TODO: Check for USB / AC charges and build two sepearte training sets
-            // Create the weka instances
-            Instance instance = new DenseInstance(2);
-            instance.setValue((Attribute) firstOrderFeatures.get(0), chargePoint.getLevel());
-            instance.setValue((Attribute) firstOrderFeatures.get(1), chargePoint.getTime());
-            trainingSet.add(instance);
-        }
-
-        // Second Order Filter
-        AddExpression addExpression = new AddExpression();
-        addExpression.setExpression("a1^2");
-
-        // Base Classifier
-        Classifier linearRegression = (Classifier) new LinearRegression();
-
-        // Meta Classifier
-        FilteredClassifier filteredClassifier = (FilteredClassifier) new FilteredClassifier();
-        filteredClassifier.setFilter(addExpression);
-        filteredClassifier.setClassifier(linearRegression);
-
-        try {
-            filteredClassifier.buildClassifier(trainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        // Create the vector to be predicted.
-        double[] predictionCurve = new double[101];
-        for (int i = 0; i <= 100; i++) {
-            Instance instance = new DenseInstance(2);
-            instance.setDataset(trainingSet);
-            instance.setValue((Attribute) firstOrderFeatures.get(0), i);
-            // Output the results
-            try {
-                // Do the actual prediction and transform back to an actual time
-                double prediction = Math.abs(filteredClassifier.classifyInstance(instance));
-                predictionCurve[i] = prediction;
-            } catch (Exception e) {
-                e.printStackTrace();
+            // Plot charge prediction
+            DataPoint[] USBPoints = new DataPoint[101];
+            DataPoint[] ACPoints = new DataPoint[101];
+            for (int i = 0; i <= 100; i++) {
+                USBPoints[i] = new DataPoint(-USBChargeTimePredictor.predict(i, 100), i);
+                ACPoints[i] = new DataPoint(-ACChargeTimePredictor.predict(i, 100), i);
             }
-        }
+            // Add them to the graph view
+            LineGraphSeries<DataPoint> USBCurve = new LineGraphSeries<>(USBPoints);
+            LineGraphSeries<DataPoint> ACCurve = new LineGraphSeries<>(ACPoints);
+            ACCurve.setColor(Color.BLUE);
+            ACCurve.setThickness(8);
+            graph.addSeries(ACCurve);
+            USBCurve.setColor(Color.RED);
+            USBCurve.setThickness(8);
+            graph.addSeries(USBCurve);
 
-        DataPoint[] curveTime = new DataPoint[101];
-        for (int i = 0 ; i <= 100; i++) {
-            curveTime[i] = new DataPoint(-predictionCurve[i], i);
-        }
-        // Add them to the graph view
-        LineGraphSeries<DataPoint> cyclePoints = new LineGraphSeries<DataPoint>(curveTime);
-        cyclePoints.setColor(Color.GREEN);
-        cyclePoints.setThickness(8);
-        graph.addSeries(cyclePoints);
 
-        return predictionCurve;
-    }
-    public String timeToString(double time) {
-        int hours = (int) Math.floor(time) % 24;
-        int minutes = (int) ((time - hours) * 60);
-        String stringMinutes = minutes < 10 ? ("0" + Integer.toString(minutes)) : Integer.toString(minutes);
-        return hours + ":" + stringMinutes;
+            graph.setTitle("Charge Time vs Battery Level");
+        }
     }
 }

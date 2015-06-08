@@ -40,8 +40,8 @@
                 <action android:name="android.intent.action.ACTION_SHUTDOWN" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".receiver.BatteryChangedReceiver" >
-        </receiver>
+        <receiver android:name=".receiver.BatteryChangedReceiver" ></receiver>
+        <receiver android:name=".receiver.StartChargeReceiver" ></receiver>
 
         <!-- SugarORM needed meta-data -->
         <meta-data

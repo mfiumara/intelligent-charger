@@ -1,12 +1,17 @@
 package tum.ei.ics.intelligentcharger;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 
+import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -14,53 +19,39 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Toast;
 
+import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
+import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.fragment.ChargeCurveFragment;
 import tum.ei.ics.intelligentcharger.fragment.CycleFragment;
 import tum.ei.ics.intelligentcharger.fragment.MainFragment;
+import tum.ei.ics.intelligentcharger.receiver.StartChargeReceiver;
+import weka.classifiers.Classifier;
+import weka.classifiers.functions.LinearRegression;
+import weka.classifiers.meta.Bagging;
+import weka.classifiers.trees.J48;
+import weka.classifiers.trees.REPTree;
+import weka.classifiers.trees.RandomForest;
+import weka.core.Attribute;
+import weka.core.DenseInstance;
+import weka.core.Instance;
+import weka.core.Instances;
 
 
 public class SwipeActivity extends FragmentActivity {
     SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
 
+    public static final String TAG = "MainActivity";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_swipe);
-
-        // Test notifications
-/*        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(this)
-                        .setSmallIcon(R.drawable.ic_stat_action_settings_input_hdmi)
-                        .setContentTitle("My notification")
-                        .setContentText("Hello World!");
-// Creates an explicit intent for an Activity in your app
-        Intent resultIntent = new Intent(this, SwipeActivity.class);
-
-// The stack builder object will contain an artificial back stack for the
-// started Activity.
-// This ensures that navigating backward from the Activity leads out of
-// your application to the Home screen.
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-// Adds the back stack for the Intent (but not the Intent itself)
-        stackBuilder.addParentStack(SwipeActivity.class);
-// Adds the Intent that starts the Activity to the top of the stack
-        stackBuilder.addNextIntent(resultIntent);
-        PendingIntent resultPendingIntent =
-                stackBuilder.getPendingIntent(
-                        0,
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                );
-        mBuilder.setContentIntent(resultPendingIntent);
-        NotificationManager mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-// mId allows you to update the notification later on.
-        mNotificationManager.notify(0, mBuilder.build());*/
-
-
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
@@ -127,6 +118,23 @@ public class SwipeActivity extends FragmentActivity {
             }
             return null;
         }
+    }
+
+    public void foo(View view) {
+        // Setup the alarm
+        Intent i = new Intent(this, StartChargeReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, i, 0);
+
+        AlarmManager alarmManager = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
+        // TODO: Make this notification work somehow!
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+        double chargeStart = 16.89;
+        int hours = (int) Math.floor(chargeStart) % 24;
+        int minutes = (int) ((chargeStart - hours) * 60);
+        calendar.set(Calendar.HOUR_OF_DAY, hours);
+        calendar.set(Calendar.MINUTE, minutes);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
     }
 
 }

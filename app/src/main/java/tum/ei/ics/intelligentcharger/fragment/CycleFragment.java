@@ -94,5 +94,7 @@ public class CycleFragment extends Fragment {
             }
         });
         graph.setTitle("Plug-in Time vs Plug-out Time");
+
+        // TODO: Plot the unplug predictor
     }
 }

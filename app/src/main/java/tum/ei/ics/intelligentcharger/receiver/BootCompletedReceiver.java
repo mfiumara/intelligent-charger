@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
 
+import tum.ei.ics.intelligentcharger.Global;
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.Battery;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
@@ -18,8 +19,6 @@ import tum.ei.ics.intelligentcharger.entity.CurveEvent;
  * Created by mattia on 05.05.15.
  */
 public class BootCompletedReceiver extends BroadcastReceiver {
-    // TODO: Fix this ugly define
-    public static Integer ALARM_FREQUENCY = 1;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -50,7 +49,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
             Intent i = new Intent(context, BatteryChangedReceiver.class);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
             AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * ALARM_FREQUENCY, pendingIntent);
+            alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * Global.ALARM_FREQUENCY, pendingIntent);
         }
         // Save new shared preferences
         prefEdit.apply();

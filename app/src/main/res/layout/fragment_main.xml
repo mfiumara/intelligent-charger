@@ -3,7 +3,7 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:weightSum="1">
-
+    <!-- TODO: Make a decent UI -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -36,5 +36,13 @@
         android:id="@+id/min_samples"
         android:max="100"
         android:indeterminate="false" />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Don&apos;t touch me"
+        android:id="@+id/button"
+        android:onClick="foo"
+        android:layout_gravity="center_horizontal" />
 
 </LinearLayout>

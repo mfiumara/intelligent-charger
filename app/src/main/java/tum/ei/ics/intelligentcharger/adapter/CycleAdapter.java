@@ -63,7 +63,6 @@ public class CycleAdapter extends BaseAdapter {
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
-        // TODO: Null pointer exception if event does not exist. Shouldn't occur at all....
         Integer level1 = list.get(position).getPluginEvent().getLevel();
         Integer level2 = list.get(position).getPlugoutEvent().getLevel();
         holder.level1.setText(Integer.toString(level1));

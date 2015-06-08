@@ -10,23 +10,26 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.google.common.primitives.Ints;
-
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 
+import tum.ei.ics.intelligentcharger.Global;
+import tum.ei.ics.intelligentcharger.predictor.ChargeTimePredictor;
+import tum.ei.ics.intelligentcharger.predictor.Predictor;
 import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.Utility;
 import tum.ei.ics.intelligentcharger.entity.Battery;
 import tum.ei.ics.intelligentcharger.entity.ChargePoint;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.CurveEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 
-import weka.classifiers.AbstractClassifier;
+import tum.ei.ics.intelligentcharger.predictor.TargetSOCPredictor;
+import tum.ei.ics.intelligentcharger.predictor.UnplugTimePredictor;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
-import weka.classifiers.lazy.IBk;
+import weka.classifiers.meta.Bagging;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -38,15 +41,15 @@ import weka.core.Instances;
 public class PowerConnectionReceiver extends BroadcastReceiver {
 
     public static final String TAG = "PowerConnectionReceiver";
-    public static Integer MIN_SAMPLES = 1;
-    // TODO: Fix this ugly define
-    public static Integer ALARM_FREQUENCY = 1;
-    @Override
+
+    private SharedPreferences prefs;
+    private SharedPreferences.Editor prefEdit;
+
     public void onReceive(Context context, Intent intent) {
         // Open shared preference file
-        SharedPreferences prefs = context.getSharedPreferences(
+        prefs = context.getSharedPreferences(
                 context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-        SharedPreferences.Editor prefEdit = prefs.edit();
+        prefEdit = prefs.edit();
 
         // Get battery information
         Battery battery = new Battery(context);
@@ -62,21 +65,19 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 battery.getTemperature(), battery.getChargingStatus());
         currEvent.save();
 
+        // TODO: Decide whether we are dealing with an actual plug event or dealing with a hypothetical plug event
         // Check battery state to determine type of event.
         if (battery.isCharging()) {
             if (!battery.isFull()) {    // Charging and not full: plug-in event
-                // Check if there is a cycle to save
-                if ((startCycleID > 0) && (endCycleID > 0)) {
-                    // Yes, we remembered the events to save, so now we save it to the database
+                if ((startCycleID > 0) && (endCycleID > 0)) { // Yes, we remembered a full charge event, so now we save it to the database
                     ConnectionEvent startEvent = ConnectionEvent.findById(ConnectionEvent.class, startCycleID);
                     ConnectionEvent endEvent = ConnectionEvent.findById(ConnectionEvent.class, endCycleID);
-                    Cycle cycle = new Cycle(startEvent, endEvent);
-                    saveCycle(context, cycle);
+                    saveCycle(context, new Cycle(startEvent, endEvent));
                 }
-                // Charging and not full: plug-in event so save this event as the start of a cycle
+                // Save this plug-in event as the start of a cycle
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
 
-                // Start batterychanged alarm to record the charge curve every X minutes
+                // Start alarm to record the charge curve every X minutes
                 Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
                 prefEdit.putLong(context.getString(R.string.curve_id), ++curveID);
 
@@ -85,35 +86,38 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
                 AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
                 // Trigger the alarm for the amount of minutes defined
-                alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * ALARM_FREQUENCY, pendingIntent);
+                alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * Global.ALARM_FREQUENCY, pendingIntent);
 
-                // Do the predictions!
-                // Create training set from list of Cycles
-                List<Cycle> cycles = Cycle.listAll(Cycle.class);
-                Integer N = cycles.size();
-                if ( N < MIN_SAMPLES ) {
-                    prefEdit.apply();
-                    return;
-                }
-                updateShift(context, cycles);   // Update shifted times
-                double unplugTime = fitUnplugPredictor(context, currEvent, cycles);   // Fit the predictor using shifted times
+                // Initialize predictor classes using Object lists from sqlite database
+                UnplugTimePredictor unplugTimePredictor =
+                        new UnplugTimePredictor(Cycle.listAll(Cycle.class));
+                ChargeTimePredictor chargeTimePredictor = // Only use chargepoints belonging to USB / AC cycles
+                        new ChargeTimePredictor(ChargePoint.find(ChargePoint.class, "plug_type = ?",
+                                currEvent.getPlugged().toString()));
+                TargetSOCPredictor targetSOCPredictor =
+                        new TargetSOCPredictor();
 
-                List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
-                N = cycles.size();
-                if ( N < MIN_SAMPLES ) {
-                    prefEdit.apply();
-                    return;
-                }
-                double chargeTime = fitChargePredictor(context, battery.getLevel(), maxSOCBound());
-
-                //TODO: Set the notification! And watch out for time between days!
+                // Calculate charge starting point and put it in a Calendar to set the alarm time
+                double unplugTime = unplugTimePredictor.predict(currEvent);
+                double chargeTime = chargeTimePredictor.predict(currEvent.getLevel(),
+                        targetSOCPredictor.predict());
                 double chargeStart = unplugTime < chargeTime ? unplugTime - chargeTime + 24
-                                                    : unplugTime - chargeTime;
+                        : unplugTime - chargeTime;
+
                 // Setup the alarm
-                i = new Intent(context, ChargeReceiver.class);
+                i = new Intent(context, StartChargeReceiver.class);
                 pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
                 alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + (long)chargeStart, pendingIntent);
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTimeInMillis(System.currentTimeMillis());
+                int hours = (int) Math.floor(chargeStart) % 24;
+                int minutes = (int) ((chargeStart - hours) * 60);
+                calendar.set(Calendar.HOUR_OF_DAY, hours);
+                calendar.set(Calendar.MINUTE, minutes);
+                // TODO: Set day of charging
+                Toast.makeText(context, "Charging starts at: " + Utility.timeToString(chargeStart),
+                        Toast.LENGTH_SHORT).show();
+                alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
             }
         } else {
             Intent i = new Intent(context, BatteryChangedReceiver.class);
@@ -146,210 +150,15 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
     }
 
     public void saveCycle(Context context, Cycle cycle) {
-        // Save cycle to database
-        // TODO: If cycle duration is less then X minutes / SOC, do not save to database
-        // For now just check if the SOC is correct, and not the same
+        // Save cycle to database only if SOC levels differ
         if (cycle.getPluginEvent().getLevel() < cycle.getPlugoutEvent().getLevel()) {
             cycle.save();
             // Notify user of saved charge cycle.
             Toast.makeText(context, "Charge cycle saved", Toast.LENGTH_SHORT).show();
         }
         // Reset saved events
-        SharedPreferences prefs = context.getSharedPreferences(
-                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-        SharedPreferences.Editor prefEdit = prefs.edit();
         prefEdit.putLong(context.getString(R.string.start_cycle_id), -1);
         prefEdit.putLong(context.getString(R.string.end_cycle_id), -1);
         prefEdit.apply();
-    }
-
-    public double fitUnplugPredictor(Context context, ConnectionEvent event, List<Cycle> cycles) {
-        // Create weka attributes
-        Attribute plugTimeAttribute= new Attribute("Plugtime");
-        Attribute unplugTimeAttribute = new Attribute("UnplugTime");
-
-        ArrayList<Attribute> attributeList = new ArrayList<Attribute>();
-        attributeList.add(plugTimeAttribute);
-        attributeList.add(unplugTimeAttribute);
-
-        Instances trainingSet = new Instances("Rel", attributeList, cycles.size());
-        trainingSet.setClassIndex(1);
-
-        // Get amount to shift times with
-        SharedPreferences prefs = context.getSharedPreferences(
-                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-        float shift = prefs.getFloat(context.getString(R.string.shift), 0.0f);
-        float transform = 0.0f;
-        // Add all cycles to training set
-        for(Cycle cycle : cycles) {
-            ConnectionEvent plugEvent = cycle.getPluginEvent();
-            ConnectionEvent unplugEvent = cycle.getPlugoutEvent();
-
-            float plugTime = plugEvent.getTime();
-            float unplugTime = unplugEvent.getTime();
-
-            float plugTimeShift = (plugTime - shift) % 24;
-            transform = plugTimeShift > unplugTime - shift ? 24 - shift : - shift;
-            float unplugTimeShift = unplugTime + transform;
-
-            // Create the weka instances
-            Instance instance = new DenseInstance(2);
-            instance.setValue((Attribute) attributeList.get(0), plugTimeShift);
-            instance.setValue((Attribute) attributeList.get(1), unplugTimeShift);
-            trainingSet.add(instance);
-        }
-
-        //TODO: Create better model and build the classifier
-        Classifier linearRegression = (Classifier) new LinearRegression();
-        Classifier decisionTree = (Classifier) new weka.classifiers.trees.REPTree();
-
-//        weka.classifiers.meta.LogitBoost boostingTree = new weka.classifiers.meta.LogitBoost();
-//        boostingTree.setClassifier(decisionTree);
-//        boostingTree.setNumIterations(5);
-
-        //Classifier adaBoost = (Classifier) new
-        try {
-            linearRegression.buildClassifier(trainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Create the vector to be predicted.
-        Instance testInstance = new DenseInstance(2);
-        testInstance.setDataset(trainingSet);
-        testInstance.setValue((Attribute) attributeList.get(0), event.getTime());
-
-        // Output the results
-        try {
-            // Do the actual prediction and transform back to an actual time
-            double prediction = Math.abs(linearRegression.classifyInstance(testInstance) - transform);
-            Toast.makeText(context, "Unplug prediction: " + timeToString(prediction), Toast.LENGTH_LONG).show();
-            Log.v(TAG, "Unplug prediction: " + timeToString(prediction));
-            return prediction;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return -1;
-    }
-    public double fitChargePredictor(Context context, double startSOC, double endSOC) {
-        // Choose where to split our predictors
-        double SPLIT = 75;
-        // Create weka attributes
-        Attribute LevelAttribute = new Attribute("Level");
-        Attribute TimeAttribute= new Attribute("Time");
-
-        ArrayList<Attribute> attributeList = new ArrayList<Attribute>();
-        attributeList.add(LevelAttribute);
-        attributeList.add(TimeAttribute);
-
-        List<ChargePoint> chargePoints = ChargePoint.listAll(ChargePoint.class);
-
-        Instances trainingSet = new Instances("Rel", attributeList, chargePoints.size());
-        trainingSet.setClassIndex(1);
-
-        // Add all chargepoints to training set
-        for(ChargePoint chargePoint : chargePoints) {
-            // TODO: Check for USB / AC charges and build two sepearte training sets
-            // Create the weka instances
-            Instance instance = new DenseInstance(2);
-            instance.setValue((Attribute) attributeList.get(0), chargePoint.getLevel());
-            instance.setValue((Attribute) attributeList.get(1), chargePoint.getTime());
-            trainingSet.add(instance);
-        }
-
-        Classifier linearRegression = (Classifier) new LinearRegression();
-
-        try {
-            linearRegression.buildClassifier(trainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Create the vector to be predicted.
-        Instance startInstance = new DenseInstance(2); startInstance.setDataset(trainingSet);
-        Instance endInstance = new DenseInstance(2); endInstance.setDataset(trainingSet);
-
-        // TODO: Enter start SOC and end SOC here
-        startInstance.setValue((Attribute) attributeList.get(0), startSOC);
-        endInstance.setValue((Attribute) attributeList.get(0), endSOC);
-
-        // Output the results
-        try {
-            // Do the actual prediction and transform back to an actual time
-            double prediction = Math.abs(linearRegression.classifyInstance(startInstance));
-            Toast.makeText(context, "Time until full charge: " + timeToString(prediction), Toast.LENGTH_LONG).show();
-            Log.v(TAG, "Time until full charge: " + timeToString(prediction));
-            return prediction;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return -1;
-    }
-    public void updateShift(Context context, List<Cycle> cycles) {
-        SharedPreferences prefs = context.getSharedPreferences(
-                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-        SharedPreferences.Editor prefEdit = prefs.edit();
-
-        // Get all plug events and sort them by plugtime
-        int N = cycles.size();
-        float[] plugEvents = new float[N];
-        int i = 0;
-        for (Cycle cycle : cycles) {
-            plugEvents[i] = cycle.getPluginEvent().getTime();
-            i++;
-        }
-        Arrays.sort(plugEvents);
-
-        // Calculate the amount to shift the plugtimes with
-        float shift, temp, maxval;
-        shift = temp = maxval = 0.0f;
-        for (i = 0; i < N - 1; i++) {
-            temp = plugEvents[i + 1] - plugEvents[i];
-            if (temp > maxval) {
-                maxval = temp;
-                shift = plugEvents[i] + maxval / 2;
-            }
-        }
-        // Check the difference between the last and first event, max time could be in between days
-        temp = plugEvents[0] + (24 - plugEvents[N - 1]);
-        if (temp > maxval) {
-            maxval = temp;
-            shift = (plugEvents[N - 1] + maxval / 2) % 24;
-        }
-        Log.v(TAG, "Amount of shift: " + shift);
-        prefEdit.putFloat(context.getString(R.string.shift), shift);
-
-    }
-    public double maxSOCBound() {
-        Integer BATCH_SIZE = 10;
-        float error = 0;
-        float maxError = 0.2f;
-
-        // Get last X results
-       /* List<Cycle> cycles = Cycle.findWithQuery(Cycle.class, "Select top ? * from Cycle", Integer.toString(BATCH_SIZE));
-        Cycle lastCycle = cycles.get(0);
-        int[] deltaSOCArray = new int[cycles.size() - 1];
-        for (int i = 1; i < cycles.size(); i++) {
-            Cycle currentCycle = cycles.get(i);
-            Integer deltaSOC = lastCycle.getPlugoutEvent().getLevel()
-                            - currentCycle.getPluginEvent().getLevel();
-            deltaSOCArray[i - 1] = deltaSOC;
-            lastCycle = cycles.get(i);
-            Log.v(TAG, cycles.get(i).getPluginEvent().getDatetime());
-        }
-
-        for (int i = 0; i < cycles.size() - 1; i++) {
-            if (i > BATCH_SIZE) {
-                Ints.max(deltaSOCArray);
-            }
-        }*/
-
-        return 100;
-    }
-    public String timeToString(double time) {
-        int hours = (int) Math.floor(time) % 24;
-        int minutes = (int) ((time - hours) * 60);
-        String stringMinutes = minutes < 10 ? ("0" + Integer.toString(minutes)) : Integer.toString(minutes);
-        return hours + ":" + stringMinutes;
     }
 }

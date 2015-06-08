@@ -14,15 +14,15 @@ import tum.ei.ics.intelligentcharger.SwipeActivity;
 /**
  * Created by mattia on 02.06.15.
  */
-public class ChargeReceiver extends BroadcastReceiver {
+public class StartChargeReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
 
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context)
                         .setSmallIcon(R.drawable.ic_stat_action_settings_input_hdmi)
-                        .setContentTitle("Start Charging")
-                        .setContentText("You know");
+                        .setContentTitle("Started charging")
+                        .setContentText("");
         // Creates an explicit intent for an Activity in your app
         Intent resultIntent = new Intent(context, SwipeActivity.class);
 
@@ -43,4 +43,7 @@ public class ChargeReceiver extends BroadcastReceiver {
         // Maybe use an ID in stead of 0 to build this notification
         mNotificationManager.notify(0, mBuilder.build());
     }
+
+
+
 }
