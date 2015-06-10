@@ -107,7 +107,7 @@ public class ChargeCurveFragment extends Fragment {
 
             // Format axes
             graph.getViewport().setXAxisBoundsManual(true);
-            graph.getViewport().setMinX(-6);
+            graph.getViewport().setMinX(-8);
             graph.getViewport().setMaxX(0);
             graph.getViewport().setYAxisBoundsManual(true);
             graph.getViewport().setMinY(0);

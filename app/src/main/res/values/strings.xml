@@ -27,9 +27,15 @@
     <string name="title_section2">Section 2</string>
     <string name="title_section3">Section 3</string>
 
+    <!-- Main Fragment display values -->
+    <string name="charge_time">CHARGE_TIME</string>
+    <string name="unplug_time">UNPLUG_TIME</string>
+    <string name="charging_status">CHARGING_STATUS</string>
+    <string name="plugged_status">PLUGGED_STATUS</string>
+    <string name="min_soc">MIN_SOC</string>
+
+    <!-- TargetSOC variables -->
     <string name="max_soc">MAX_SOC</string>
     <string name="max_error">MAX_ERROR</string>
-
-
 
 </resources>

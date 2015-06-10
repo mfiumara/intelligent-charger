@@ -30,6 +30,7 @@ import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.fragment.ChargeCurveFragment;
 import tum.ei.ics.intelligentcharger.fragment.CycleFragment;
 import tum.ei.ics.intelligentcharger.fragment.MainFragment;
+import tum.ei.ics.intelligentcharger.predictor.TargetSOCPredictor;
 import tum.ei.ics.intelligentcharger.receiver.StartChargeReceiver;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
@@ -120,21 +121,9 @@ public class SwipeActivity extends FragmentActivity {
         }
     }
 
-    public void foo(View view) {
-        // Setup the alarm
-        Intent i = new Intent(this, StartChargeReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, i, 0);
-
-        AlarmManager alarmManager = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
-        // TODO: Make this notification work somehow!
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(System.currentTimeMillis());
-        double chargeStart = 16.89;
-        int hours = (int) Math.floor(chargeStart) % 24;
-        int minutes = (int) ((chargeStart - hours) * 60);
-        calendar.set(Calendar.HOUR_OF_DAY, hours);
-        calendar.set(Calendar.MINUTE, minutes);
-        alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+    public void debug(View view) {
+        TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), 10);
+        Toast.makeText(this, Integer.toString(targetSOCPredictor.predict()) + "%", Toast.LENGTH_SHORT).show();
     }
 
 }

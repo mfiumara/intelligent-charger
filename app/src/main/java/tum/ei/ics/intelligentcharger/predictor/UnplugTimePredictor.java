@@ -7,7 +7,6 @@ import java.util.List;
 import tum.ei.ics.intelligentcharger.Global;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
-import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -30,6 +29,37 @@ public class UnplugTimePredictor extends Predictor{
             fitPredictor();
         }
     }
+    public double predict(ConnectionEvent event) {
+        if (cycles.size() > Global.MINIMUM_SAMPLES) {
+            // Create the vector to be predicted.
+            Instance testInstance = new DenseInstance(2);
+            testInstance.setDataset(trainingSet);
+            testInstance.setValue(attributeList.get(0), (event.getTime() - shift) % 24);
+
+            try { // Do the actual prediction and transform back to an actual time
+                return (classifier.classifyInstance(testInstance) + shift) % 24;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return -1;
+    }
+    public double predict(double time) {
+        if (cycles.size() > Global.MINIMUM_SAMPLES) {
+            // Create the vector to be predicted.
+            Instance testInstance = new DenseInstance(2);
+            testInstance.setDataset(trainingSet);
+            testInstance.setValue(attributeList.get(0), (time - shift) % 24);
+
+            try { // Do the actual prediction and transform back to an actual time
+                return (classifier.classifyInstance(testInstance) + shift) % 24;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return -1;
+    }
+    public float getShift() { return shift; }
 
     private float calculateShift() {
         // Get all plug events and sort them by plugtime
@@ -82,8 +112,8 @@ public class UnplugTimePredictor extends Predictor{
             float unplugTime = unplugEvent.getTime();
 
             float plugTimeShift = (plugTime - shift) % 24;
-            transform = plugTimeShift > unplugTime - shift ? 24 - shift : - shift;
-            float unplugTimeShift = unplugTime + transform;
+            transform = plugTimeShift > unplugTime - shift ? 24 : 0;
+            float unplugTimeShift = unplugTime - shift + transform;
 
             // Create the weka instances
             Instance instance = new DenseInstance(2);
@@ -103,21 +133,5 @@ public class UnplugTimePredictor extends Predictor{
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public double predict(ConnectionEvent event) {
-        if (cycles.size() > Global.MINIMUM_SAMPLES) {
-            // Create the vector to be predicted.
-            Instance testInstance = new DenseInstance(2);
-            testInstance.setDataset(trainingSet);
-            testInstance.setValue(attributeList.get(0), event.getTime());
-
-            try { // Do the actual prediction and transform back to an actual time
-                return (classifier.classifyInstance(testInstance) + shift) % 24;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        return -1;
     }
 }

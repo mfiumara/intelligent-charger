@@ -13,12 +13,15 @@ import com.jjoe64.graphview.DefaultLabelFormatter;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.DataPointInterface;
+import com.jjoe64.graphview.series.LineGraphSeries;
 import com.jjoe64.graphview.series.PointsGraphSeries;
 
 import java.util.List;
 
 import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
+import tum.ei.ics.intelligentcharger.predictor.UnplugTimePredictor;
 
 /**
  * Created by mattia on 01.06.15.
@@ -95,6 +98,26 @@ public class CycleFragment extends Fragment {
         });
         graph.setTitle("Plug-in Time vs Plug-out Time");
 
-        // TODO: Plot the unplug predictor
+        // Plot predictor
+        UnplugTimePredictor unplugTimePredictor = new UnplugTimePredictor(Cycle.listAll(Cycle.class));
+        float shift = unplugTimePredictor.getShift();
+
+        DataPoint[] shiftPoints = new DataPoint[25];
+        DataPoint[] unplugTimes = new DataPoint[25];
+        for (int i = 0; i <= 24; i++) {
+            double unplugTime = unplugTimePredictor.predict(i);
+            unplugTimes[i] = new DataPoint(i, unplugTime);
+            shiftPoints[i] = new DataPoint(shift, i);
+        }
+        LineGraphSeries<DataPoint> unplugCurve = new LineGraphSeries<>(unplugTimes);
+        unplugCurve.setColor(Color.BLUE);
+        unplugCurve.setThickness(8);
+        graph.addSeries(unplugCurve);
+
+        // Plot shifted time
+        LineGraphSeries<DataPoint> shiftLine = new LineGraphSeries<>(shiftPoints);
+        shiftLine.setColor(Color.GREEN);
+        shiftLine.setThickness(8);
+//        graph.addSeries(shiftLine);
     }
 }

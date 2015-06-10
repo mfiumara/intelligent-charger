@@ -7,16 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
-import android.util.Log;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 
 import tum.ei.ics.intelligentcharger.Global;
 import tum.ei.ics.intelligentcharger.predictor.ChargeTimePredictor;
-import tum.ei.ics.intelligentcharger.predictor.Predictor;
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.Utility;
 import tum.ei.ics.intelligentcharger.entity.Battery;
@@ -24,16 +20,8 @@ import tum.ei.ics.intelligentcharger.entity.ChargePoint;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.CurveEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
-
 import tum.ei.ics.intelligentcharger.predictor.TargetSOCPredictor;
 import tum.ei.ics.intelligentcharger.predictor.UnplugTimePredictor;
-import weka.classifiers.Classifier;
-import weka.classifiers.functions.LinearRegression;
-import weka.classifiers.meta.Bagging;
-import weka.core.Attribute;
-import weka.core.DenseInstance;
-import weka.core.Instance;
-import weka.core.Instances;
 
 /**
  * Created by mattia on 07.05.15.
@@ -86,7 +74,8 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
                 AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
                 // Trigger the alarm for the amount of minutes defined
-                alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 1000 * 60 * Global.ALARM_FREQUENCY, pendingIntent);
+                alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        SystemClock.elapsedRealtime(), 1000 * 60 * Global.ALARM_FREQUENCY, pendingIntent);
 
                 // Initialize predictor classes using Object lists from sqlite database
                 UnplugTimePredictor unplugTimePredictor =
@@ -95,29 +84,40 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                         new ChargeTimePredictor(ChargePoint.find(ChargePoint.class, "plug_type = ?",
                                 currEvent.getPlugged().toString()));
                 TargetSOCPredictor targetSOCPredictor =
-                        new TargetSOCPredictor();
+                        new TargetSOCPredictor(context, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
 
                 // Calculate charge starting point and put it in a Calendar to set the alarm time
                 double unplugTime = unplugTimePredictor.predict(currEvent);
-                double chargeTime = chargeTimePredictor.predict(currEvent.getLevel(),
-                        targetSOCPredictor.predict());
-                double chargeStart = unplugTime < chargeTime ? unplugTime - chargeTime + 24
-                        : unplugTime - chargeTime;
+                Integer maxSOC = targetSOCPredictor.predict();
+                double chargeTime = chargeTimePredictor.predict(currEvent.getLevel(), maxSOC);
+                prefEdit.putFloat(context.getString(R.string.unplug_time), (float) unplugTime);
+                prefEdit.putFloat(context.getString(R.string.charge_time), (float) chargeTime);
+                prefEdit.putInt(context.getString(R.string.min_soc), Global.MIN_SOC);
+                prefEdit.putInt(context.getString(R.string.max_soc), maxSOC);
 
-                // Setup the alarm
-                i = new Intent(context, StartChargeReceiver.class);
-                pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
-                alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTimeInMillis(System.currentTimeMillis());
-                int hours = (int) Math.floor(chargeStart) % 24;
-                int minutes = (int) ((chargeStart - hours) * 60);
-                calendar.set(Calendar.HOUR_OF_DAY, hours);
-                calendar.set(Calendar.MINUTE, minutes);
-                // TODO: Set day of charging
-                Toast.makeText(context, "Charging starts at: " + Utility.timeToString(chargeStart),
-                        Toast.LENGTH_SHORT).show();
-                alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+                // TODO: Reload main fragment
+
+                if (unplugTime > 0 && chargeTime > 0) {
+                    double chargeStart = unplugTime < chargeTime ? unplugTime - chargeTime + 24
+                            : unplugTime - chargeTime;
+                    int hours = (int) Math.floor(chargeStart) % 24;
+                    int minutes = (int) ((chargeStart - hours) * 60);
+
+                    // Setup the alarm
+                    i = new Intent(context, StartChargeReceiver.class);
+                    pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
+                    alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTimeInMillis(System.currentTimeMillis());
+                    if (calendar.HOUR_OF_DAY > (int) Math.floor(unplugTime)) {
+                        calendar.setTimeInMillis(System.currentTimeMillis() + 1000 * 60 * 60 * 24);
+                    }
+                    calendar.set(Calendar.HOUR_OF_DAY, hours);
+                    calendar.set(Calendar.MINUTE, minutes);
+                    Toast.makeText(context, "Charging starts at: " + Utility.timeToString(chargeStart),
+                            Toast.LENGTH_SHORT).show();
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+                }
             }
         } else {
             Intent i = new Intent(context, BatteryChangedReceiver.class);

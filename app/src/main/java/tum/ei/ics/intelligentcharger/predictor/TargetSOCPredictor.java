@@ -1,37 +1,69 @@
 package tum.ei.ics.intelligentcharger.predictor;
 
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import com.google.common.primitives.Ints;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import tum.ei.ics.intelligentcharger.R;
+import tum.ei.ics.intelligentcharger.entity.Cycle;
+
 /**
  * Created by mattia on 08.06.15.
  */
 public class TargetSOCPredictor {
-    // TODO: Implement this estimator
-    public TargetSOCPredictor() {
-        Integer BATCH_SIZE = 10;
-        float error = 0;
-        float maxError = 0.2f;
+    public List<Cycle> inputCycles = new ArrayList<Cycle>();
+    private SharedPreferences prefs;
+    private SharedPreferences.Editor prefEdit;
 
-        // Get last X results
-   /* List<Cycle> cycles = Cycle.findWithQuery(Cycle.class, "Select top ? * from Cycle", Integer.toString(BATCH_SIZE));
-    Cycle lastCycle = cycles.get(0);
-    int[] deltaSOCArray = new int[cycles.size() - 1];
-    for (int i = 1; i < cycles.size(); i++) {
-        Cycle currentCycle = cycles.get(i);
-        Integer deltaSOC = lastCycle.getPlugoutEvent().getLevel()
-                        - currentCycle.getPluginEvent().getLevel();
-        deltaSOCArray[i - 1] = deltaSOC;
-        lastCycle = cycles.get(i);
-        Log.v(TAG, cycles.get(i).getPluginEvent().getDatetime());
-    }
+    private Integer maxError;
+    private Integer maxSOC;
 
-    for (int i = 0; i < cycles.size() - 1; i++) {
-        if (i > BATCH_SIZE) {
-            Ints.max(deltaSOCArray);
+    public TargetSOCPredictor(Context context, List<Cycle> cycles, Integer batchSize) {
+        prefs = context.getSharedPreferences(
+                context.getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        prefEdit = prefs.edit();
+
+        Integer N = cycles.size();
+        maxSOC = prefs.getInt(context.getString(R.string.max_soc), 100);
+        maxError = prefs.getInt(context.getString(R.string.max_error), 0);
+        Integer error = 0;
+
+        if (N > batchSize) {
+            for (int i = N - 1; i > batchSize; i--) { inputCycles.add(cycles.get(i)); }
+            N = inputCycles.size();
+            Cycle previousCycle = inputCycles.get(0);
+            int[] deltaSOCArray = new int[N - 1];
+            for (int i =1; i < N; i++) {
+                Cycle currentCycle = inputCycles.get(i);
+                int deltaSOC = currentCycle.getPlugoutEvent().getLevel() - previousCycle.getPluginEvent().getLevel();
+                deltaSOCArray[i - 1] = deltaSOC;
+                previousCycle = inputCycles.get(i);
+            }
+
+            // Calculate maximum error in last batchSize number of cycles and correct with maximum error last recorded
+            error = Ints.max(deltaSOCArray) - maxSOC;
+            maxSOC = Ints.max(deltaSOCArray) + maxError;
+            // Clip maxSOC between 0 and 100%
+            if (maxSOC >= 100) {
+                maxSOC = 100;
+            } else if (maxSOC <= 0) {
+                maxSOC = 0;
+            }
+            maxError = error > 0 ? error : maxError;
+
+            prefEdit.putInt(context.getString(R.string.max_soc), maxSOC);
+            prefEdit.putInt(context.getString(R.string.max_error), maxError);
         }
-    }*/
+        prefEdit.apply();
     }
 
     public Integer predict() {
-        return 100;
+        return maxSOC;
     }
 
 }
