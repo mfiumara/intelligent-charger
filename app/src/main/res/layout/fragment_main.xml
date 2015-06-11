@@ -110,13 +110,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="40%"
-                android:id="@+id/min_soc"
+                android:id="@+id/min_soc_tv"
                 android:layout_column="2" />
 
             <SeekBar
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:id="@+id/seekBar"
+                android:id="@+id/min_soc_bar"
                 android:layout_column="4"
                 android:max="100"
                 android:indeterminate="false"
@@ -139,13 +139,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="92%"
-                android:id="@+id/max_soc"
+                android:id="@+id/max_soc_tv"
                 android:layout_column="2" />
 
             <SeekBar
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:id="@+id/seekBar2"
+                android:id="@+id/max_soc_bar"
                 android:layout_column="4"
                 android:max="100"
                 android:indeterminate="false"
@@ -154,13 +154,25 @@
 
     </TableLayout>
 
-    <Button
+    <LinearLayout
+        android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Debug Target SOC"
-        android:id="@+id/debug"
-        android:onClick="debug"
-        android:layout_gravity="center_horizontal" />
+        android:layout_height="wrap_content">
+
+        <Button
+            android:layout_width="198dp"
+            android:layout_height="wrap_content"
+            android:text="Debug Target SOC"
+            android:id="@+id/debug"
+            android:onClick="debug" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Bluetooth"
+            android:id="@+id/bluetooth"
+            android:onClick="bluetooth"/>
+    </LinearLayout>
 
     <Switch
         android:layout_width="match_parent"

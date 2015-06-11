@@ -4,6 +4,11 @@
     package="tum.ei.ics.intelligentcharger" >
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+
+    <permission android:name="android.permission.BLUETOOTH" android:label="BLUETOOTH"/>
+    <permission android:name="android.permission.BLUETOOTH_ADMIN"/>
 
     <application
         android:name="com.orm.SugarApp"
@@ -40,8 +45,11 @@
                 <action android:name="android.intent.action.ACTION_SHUTDOWN" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".receiver.BatteryChangedReceiver" ></receiver>
-        <receiver android:name=".receiver.StartChargeReceiver" ></receiver>
+        <receiver android:name=".receiver.BatteryChangedReceiver" />
+        <receiver android:name=".receiver.StartChargeReceiver" />
+
+        <!-- Other receivers -->
+        <receiver android:name=".fragment.MainFragment$updateView" />
 
         <!-- SugarORM needed meta-data -->
         <meta-data
@@ -56,6 +64,12 @@
         <meta-data
             android:name="DOMAIN_PACKAGE_NAME"
             android:value="tum.ei.ics.intelligentcharger.entity" />
+
+        <service
+            android:name=".bluetooth.BleService"
+            android:enabled="true"
+            android:exported="true" >
+        </service>
 
     </application>
 

@@ -30,15 +30,15 @@ public class TargetSOCPredictor {
 
         Integer N = cycles.size();
         maxSOC = prefs.getInt(context.getString(R.string.max_soc), 100);
-        maxError = prefs.getInt(context.getString(R.string.max_error), 0);
+        maxError = prefs.getInt(context.getString(R.string.max_error), 20);
         Integer error = 0;
 
         if (N > batchSize) {
-            for (int i = N - 1; i > batchSize; i--) { inputCycles.add(cycles.get(i)); }
-            N = inputCycles.size();
+            for (int i = N - 1; i > N - 1 - batchSize; i--) { inputCycles.add(cycles.get(i)); }
+            Integer M = inputCycles.size();
             Cycle previousCycle = inputCycles.get(0);
-            int[] deltaSOCArray = new int[N - 1];
-            for (int i =1; i < N; i++) {
+            int[] deltaSOCArray = new int[M - 1];
+            for (int i =1; i < M; i++) {
                 Cycle currentCycle = inputCycles.get(i);
                 int deltaSOC = currentCycle.getPlugoutEvent().getLevel() - previousCycle.getPluginEvent().getLevel();
                 deltaSOCArray[i - 1] = deltaSOC;

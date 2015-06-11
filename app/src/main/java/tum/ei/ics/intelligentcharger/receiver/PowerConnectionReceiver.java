@@ -54,6 +54,11 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         currEvent.save();
 
         // TODO: Decide whether we are dealing with an actual plug event or dealing with a hypothetical plug event
+
+        // If plug-in event: Start bluetooth service
+
+        // Initialize bluetooth connection
+
         // Check battery state to determine type of event.
         if (battery.isCharging()) {
             if (!battery.isFull()) {    // Charging and not full: plug-in event
@@ -65,6 +70,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                 // Save this plug-in event as the start of a cycle
                 prefEdit.putLong(context.getString(R.string.start_cycle_id), currEvent.getId());
 
+                // TODO: Remove the start of charge curve recording here when the actual charger is implemented
                 // Start alarm to record the charge curve every X minutes
                 Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);
                 prefEdit.putLong(context.getString(R.string.curve_id), ++curveID);

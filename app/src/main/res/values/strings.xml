@@ -37,5 +37,6 @@
     <!-- TargetSOC variables -->
     <string name="max_soc">MAX_SOC</string>
     <string name="max_error">MAX_ERROR</string>
+    <string name="title_activity_bluetooth">BluetoothActivity</string>
 
 </resources>

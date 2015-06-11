@@ -9,4 +9,7 @@ public class Global {
     public static final Integer CURVE_SPLIT = 75;
     public static final Integer HISTORY_SIZE = 25;
     public static final Integer MIN_SOC = 40;
+
+    public static final String AUTOCONNECT_BLE_DEVICEADDRESS = "Autoconnect_Ble_Deviceaddress";
+    public static final String AUTOCONNECT_BLE_DEVICENAME = "Autoconnect_Ble_Devicename";
 }

@@ -9,9 +9,14 @@ import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -25,6 +30,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import tum.ei.ics.intelligentcharger.bluetooth.BleService;
+import tum.ei.ics.intelligentcharger.bluetooth.Bluetooth;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.fragment.ChargeCurveFragment;
@@ -47,6 +54,10 @@ import weka.core.Instances;
 public class SwipeActivity extends FragmentActivity {
     SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
+
+    private BleService m_oBluetoothLeService = null;
+    private ServiceConnection m_oServiceConnection = null;
+    private BroadcastReceiver m_oGattUpdateReceiver = null;
 
     public static final String TAG = "MainActivity";
     @Override
@@ -98,13 +109,15 @@ public class SwipeActivity extends FragmentActivity {
                     return CycleFragment.newInstance(position + 1);
                 case 2:
                     return ChargeCurveFragment.newInstance(position + 1);
+                case 3:
+                    return Bluetooth.newInstance("","");
             }
             return MainFragment.newInstance(0);
         }
         @Override
         public int getCount() {
-            // Show 3 total pages.
-            return 3;
+            // Show 4 total pages.
+            return 4;
         }
         @Override
         public CharSequence getPageTitle(int position) {
@@ -124,6 +137,56 @@ public class SwipeActivity extends FragmentActivity {
     public void debug(View view) {
         TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), 10);
         Toast.makeText(this, Integer.toString(targetSOCPredictor.predict()) + "%", Toast.LENGTH_SHORT).show();
+
+        Intent i = new Intent(this, MainFragment.updateView.class);
+        sendBroadcast(i);
     }
 
+    public void bluetooth(View view) {
+        SharedPreferences prefs = getSharedPreferences(
+                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+
+        startBleService(prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, ""), prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME,""));
+    }
+    public boolean startBleService(final String address, final String deviceName) {
+        m_oServiceConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName componentName, IBinder service) {
+                Log.d(TAG, "onServiceConnected");
+                m_oBluetoothLeService = ((BleService.LocalBinder) service).getService();
+                if(!m_oBluetoothLeService.initialize()) {
+                    Log.e("BLE", "Unable to initialize Bluetooth");
+                }
+                Log.d(TAG, "connect to ble service");
+                m_oBluetoothLeService.connect(address, deviceName);
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName componentName) {
+                m_oBluetoothLeService = null;
+            }
+        };
+
+        m_oGattUpdateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String action = intent.getAction();
+                if(BleService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                    startBleService(address,deviceName);
+                }
+            }
+        };
+
+        Intent gattServiceIntent = new Intent(this, BleService.class);
+        bindService(gattServiceIntent, m_oServiceConnection, BIND_AUTO_CREATE);
+        registerReceiver(m_oGattUpdateReceiver, makeGattUpdateIntentFilter());
+
+        return true;
+    }
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BleService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BleService.ACTION_GATT_DISCONNECTED);
+        return intentFilter;
+    }
 }
