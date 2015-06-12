@@ -293,9 +293,13 @@ public class BleService extends Service {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return false;
         }
+        // TODO: Change UUID and send either 0x00 or 0x01
+        //  BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_WRITE));
+        // characteristic.setValue(new byte[]{0x64, 0x01});
 
-        BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_WRITE));
-        characteristic.setValue(new byte[]{0x64, 0x01});
+        BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_LED_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_LED_CHARACTERISTIC));
+        characteristic.setValue(new byte[]{0x00});
+
         return m_oBluetoothGatt.writeCharacteristic(characteristic);
 
     }
@@ -325,13 +329,13 @@ public class BleService extends Service {
         //RCS
         //*********************************************************************************************************************
 
-        BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_READ));
+        /*BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_READ));
         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString(GattAttributes.CHARACTERISTIC_UPDATE_NOTIFICATION));
         descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
         boolean success = m_oBluetoothGatt.writeDescriptor(descriptor);
         if (success) {
             return m_oBluetoothGatt.setCharacteristicNotification(characteristic, enable);
-        }
+        }*/
 
 
         return false;

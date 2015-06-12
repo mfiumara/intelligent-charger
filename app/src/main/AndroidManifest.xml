@@ -50,6 +50,7 @@
 
         <!-- Other receivers -->
         <receiver android:name=".fragment.MainFragment$updateView" />
+        <receiver android:name=".fragment.CycleFragment$updateView" />
 
         <!-- SugarORM needed meta-data -->
         <meta-data

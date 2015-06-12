@@ -5,22 +5,36 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.os.IBinder;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 
 import tum.ei.ics.intelligentcharger.Global;
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.SwipeActivity;
+import tum.ei.ics.intelligentcharger.bluetooth.BleService;
 
 /**
  * Created by mattia on 02.06.15.
  */
 public class StartChargeReceiver extends BroadcastReceiver {
+
+    private static final String TAG = "StartChargeReceiver";
+
     private SharedPreferences prefs;
     private SharedPreferences.Editor prefEdit;
+
+    private BleService m_oBluetoothLeService;
+    private ServiceConnection m_oServiceConnection;
+    private BroadcastReceiver m_oGattUpdateReceiver;
+
     @Override
     public void onReceive(Context context, Intent intent) {
 
@@ -66,7 +80,50 @@ public class StartChargeReceiver extends BroadcastReceiver {
 
         prefEdit.apply();
 
-        // TODO: Connect to bluetooth and send start charge command
+        // TODO: Connect to bluetooth and send start charge command, binding a service is not allowed within broadcast receiver
+        startBleService(context, prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, ""), prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME,""));
+    }
+    public boolean startBleService(Context context, final String address, final String deviceName) {
+        m_oServiceConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName componentName, IBinder service) {
+                Log.d(TAG, "onServiceConnected");
+                m_oBluetoothLeService = ((BleService.LocalBinder) service).getService();
+                if(!m_oBluetoothLeService.initialize()) {
+                    Log.e("BLE", "Unable to initialize Bluetooth");
+                }
+                Log.d(TAG, "connect to ble service");
+                m_oBluetoothLeService.connect(address, deviceName);
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName componentName) {
+                m_oBluetoothLeService = null;
+            }
+        };
+
+        m_oGattUpdateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String action = intent.getAction();
+                if(BleService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                    startBleService(context, address, deviceName);
+                }
+            }
+        };
+
+        Intent gattServiceIntent = new Intent(context, BleService.class);
+        context.startService(gattServiceIntent);
+//        context.bindService(gattServiceIntent, m_oServiceConnection, context.BIND_AUTO_CREATE);
+//        context.registerReceiver(m_oGattUpdateReceiver, makeGattUpdateIntentFilter());
+
+        return true;
+    }
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BleService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BleService.ACTION_GATT_DISCONNECTED);
+        return intentFilter;
     }
 
 

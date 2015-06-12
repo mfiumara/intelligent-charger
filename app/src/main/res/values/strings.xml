@@ -39,4 +39,6 @@
     <string name="max_error">MAX_ERROR</string>
     <string name="title_activity_bluetooth">BluetoothActivity</string>
 
+    <string name="smart_charge">SMART_CHARGE</string>
+
 </resources>

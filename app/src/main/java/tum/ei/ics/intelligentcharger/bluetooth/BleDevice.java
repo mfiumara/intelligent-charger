@@ -37,10 +37,7 @@ public class BleDevice implements Serializable{
         return m_sDeviceAddress;
     }
 
-    public void setConnectionState(ConnectionState connectionState)
-    {
-        m_oConnectionState = connectionState;
-    }
+    public void setConnectionState(ConnectionState connectionState) { m_oConnectionState = connectionState; }
 
     public ConnectionState getConnectionState()
     {

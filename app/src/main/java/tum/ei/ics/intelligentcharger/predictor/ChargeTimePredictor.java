@@ -73,21 +73,23 @@ public class ChargeTimePredictor extends Predictor{
 
     public double predict(double startSOC, double endSOC) {
         if (chargePoints.size() > Global.MINIMUM_SAMPLES) {
-            // Create the vector to be predicted.
-            Instance startInstance = new DenseInstance(2);
-            startInstance.setDataset(trainingSet);
-            Instance endInstance = new DenseInstance(2);
-            endInstance.setDataset(trainingSet);
+            if (startSOC > endSOC) {
+                // Create the vector to be predicted.
+                Instance startInstance = new DenseInstance(2);
+                startInstance.setDataset(trainingSet);
+                Instance endInstance = new DenseInstance(2);
+                endInstance.setDataset(trainingSet);
 
-            startInstance.setValue(attributeList.get(0), startSOC);
-            endInstance.setValue(attributeList.get(0), endSOC);
+                startInstance.setValue(attributeList.get(0), startSOC);
+                endInstance.setValue(attributeList.get(0), endSOC);
 
-            try { // Do the actual prediction
-                double startTime = classifier.classifyInstance(startInstance);
-                double endTime = classifier.classifyInstance(endInstance);
-                return (endTime - startTime);
-            } catch (Exception e) {
-                e.printStackTrace();
+                try { // Do the actual prediction
+                    double startTime = classifier.classifyInstance(startInstance);
+                    double endTime = classifier.classifyInstance(endInstance);
+                    return (endTime - startTime);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
         return -1;

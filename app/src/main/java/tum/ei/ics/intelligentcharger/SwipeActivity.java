@@ -135,11 +135,8 @@ public class SwipeActivity extends FragmentActivity {
     }
 
     public void debug(View view) {
-        TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), 10);
+        TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
         Toast.makeText(this, Integer.toString(targetSOCPredictor.predict()) + "%", Toast.LENGTH_SHORT).show();
-
-        Intent i = new Intent(this, MainFragment.updateView.class);
-        sendBroadcast(i);
     }
 
     public void bluetooth(View view) {
