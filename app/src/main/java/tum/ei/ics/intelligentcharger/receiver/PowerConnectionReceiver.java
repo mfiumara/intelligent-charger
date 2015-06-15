@@ -1,17 +1,21 @@
 package tum.ei.ics.intelligentcharger.receiver;
 
 import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
+import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
 import java.util.Calendar;
 
 import tum.ei.ics.intelligentcharger.Global;
+import tum.ei.ics.intelligentcharger.SwipeActivity;
 import tum.ei.ics.intelligentcharger.fragment.CycleFragment;
 import tum.ei.ics.intelligentcharger.fragment.MainFragment;
 import tum.ei.ics.intelligentcharger.predictor.ChargeTimePredictor;
@@ -124,6 +128,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                         calendar.set(Calendar.MINUTE, minutes);
                         Toast.makeText(context, "Charging starts at: " + Utility.timeToString(chargeStart),
                                 Toast.LENGTH_SHORT).show();
+                        setNotification(context, chargeStart);
                         alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
                     }
                 }
@@ -178,5 +183,33 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         Intent i = new Intent(context, CycleFragment.updateView.class);
         context.sendBroadcast(i);
 
+    }
+
+    public void setNotification(Context context, double time) {
+        //Intent cancelAlarm = new Intent()
+
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context)
+                .setSmallIcon(R.drawable.ic_stat_action_settings_input_hdmi)
+                .setContentTitle("Charging postponed")
+                .setContentText("Charging will start at " + Utility.timeToString(time));
+        // Creates an explicit intent for an Activity in your app
+        Intent resultIntent = new Intent(context, SwipeActivity.class);
+
+        // The stack builder object will contain an artificial back stack for the
+        // started Activity.
+        // This ensures that navigating backward from the Activity leads out of
+        // your application to the Home screen.
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
+        // Adds the back stack for the Intent (but not the Intent itself)
+        stackBuilder.addParentStack(SwipeActivity.class);
+        // Adds the Intent that starts the Activity to the top of the stack
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(0,PendingIntent.FLAG_UPDATE_CURRENT);
+        mBuilder.setContentIntent(resultPendingIntent);
+        NotificationManager mNotificationManager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        // Maybe use an ID in stead of 0 to build this notification
+        mNotificationManager.notify(0, mBuilder.build());
     }
 }

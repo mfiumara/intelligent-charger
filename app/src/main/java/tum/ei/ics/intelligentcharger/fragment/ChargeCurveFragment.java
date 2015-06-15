@@ -138,8 +138,8 @@ public class ChargeCurveFragment extends Fragment {
             DataPoint[] USBPoints = new DataPoint[101];
             DataPoint[] ACPoints = new DataPoint[101];
             for (int i = 0; i <= 100; i++) {
-                USBPoints[i] = new DataPoint(USBChargeTimePredictor.predict(i, 100), i);
-                ACPoints[i] = new DataPoint(ACChargeTimePredictor.predict(i, 100), i);
+                USBPoints[i] = new DataPoint(-USBChargeTimePredictor.predict(i, 100), i);
+                ACPoints[i] = new DataPoint(-ACChargeTimePredictor.predict(i, 100), i);
             }
             // Add them to the graph view
             LineGraphSeries<DataPoint> USBCurve = new LineGraphSeries<>(USBPoints);

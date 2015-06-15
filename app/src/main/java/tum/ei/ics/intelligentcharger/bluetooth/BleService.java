@@ -9,9 +9,11 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
@@ -50,7 +52,7 @@ public class BleService extends Service {
     }
 
     /**
-     * @brief This function handles the different states of the Bluetooth connection (Disconnected, Connecting, Conncted)
+     * @brief This function handles the different states of the Bluetooth connection (Disconnected, Connecting, Connected)
      */
     private final BluetoothGattCallback m_oGattCallback = new BluetoothGattCallback() {
         @Override
@@ -75,20 +77,16 @@ public class BleService extends Service {
                 //due to timing problems the characteristic notification and the start sensor data are transmitted with delays
 
 
-                m_oNotificationHandler.postDelayed(new Runnable() {
+/*                m_oNotificationHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         setCharacteristicNotification(true);
                     }
-                }, 500);
+                }, 500);*/
 
                 m_oSensorHandler.postDelayed(new Runnable() {
                     @Override
-                    public void run() {
-                        startSensor();
-                    }
-                }, 750);
-
+                    public void run() { switchLED(true); } }, 750);
 
                 device.setConnectionState(m_oConnectionState);
 
@@ -106,16 +104,11 @@ public class BleService extends Service {
 
             broadcastBluetoothStatusToHE2mtService(BLUETOOTH_STATUS, device);
         }
-
         /**
          * @brief This function handles the incoming data from the bluetooth sensor
          */
         @Override
-        public void onCharacteristicChanged(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic)
-        {
-
-            // raw data handle
-        }
+        public void onCharacteristicChanged(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) { }
     };
 
     /**
@@ -126,22 +119,18 @@ public class BleService extends Service {
         sendBroadcast(intent);
     }
 
-
     /**
      * @brief This function broadcasts the bluetooth status to the he2mt service
      */
-    private void broadcastBluetoothStatusToHE2mtService(final String action, final BleDevice device)
-    {
+    private void broadcastBluetoothStatusToHE2mtService(final String action, final BleDevice device) {
         final Intent intent = new Intent(action);
         intent.setAction(ACTION_STRING_SERVICE);
         intent.putExtra(BLUETOOTH_STATUS, device);
         sendBroadcast(intent);
     }
 
-    public class LocalBinder extends Binder
-    {
-        public BleService getService()
-        {
+    public class LocalBinder extends Binder {
+        public BleService getService() {
             return BleService.this;
         }
     }
@@ -162,6 +151,14 @@ public class BleService extends Service {
         return super.onUnbind(intent);
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        initialize();
+        Bundle bundle = intent.getExtras();
+        connect(bundle.getString("address"), bundle.getString("name"));
+        return super.onStartCommand(intent, flags, startId);
+    }
+
     /**
      * Initializes a reference to the local Bluetooth adapter.
      *
@@ -171,23 +168,18 @@ public class BleService extends Service {
         // For API level 18 and above, get a reference to BluetoothAdapter
         // through
         // BluetoothManager.
-        if (m_oBluetoothManager == null)
-        {
+        if (m_oBluetoothManager == null) {
             m_oBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-            if (m_oBluetoothManager == null)
-            {
+            if (m_oBluetoothManager == null) {
                 Log.e(TAG, "Unable to initialize BluetoothManager.");
                 return false;
             }
         }
-
         m_oBluetoothAdapter = m_oBluetoothManager.getAdapter();
-        if (m_oBluetoothAdapter == null)
-        {
+        if (m_oBluetoothAdapter == null) {
             Log.e(TAG, "Unable to obtain a BluetoothAdapter.");
             return false;
         }
-
         return true;
     }
 
@@ -202,37 +194,28 @@ public class BleService extends Service {
      *         {@code BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)}
      *         callback.
      */
-    public boolean connect(final String address, final String name)
-    {
+    public boolean connect(final String address, final String name) {
 
         m_oSensorHandler = new Handler();
         m_oNotificationHandler = new Handler();
 
-        if (m_oBluetoothAdapter == null || address == null)
-        {
+        if (m_oBluetoothAdapter == null || address == null) {
             Log.w(TAG, "BluetoothAdapter not initialized or unspecified address.");
             return false;
         }
 
         // Previously connected device. Try to reconnect.
-        if (m_sDeviceAddress != null && address.equals(m_sDeviceAddress) && m_oBluetoothGatt != null)
-        {
-            //Log.d(TAG, "Trying to use an existing mBluetoothGatt for connection.");
-
-            if (m_oBluetoothGatt.connect())
-            {
+        if (m_sDeviceAddress != null && address.equals(m_sDeviceAddress) && m_oBluetoothGatt != null) {
+            if (m_oBluetoothGatt.connect()) {
                 m_oConnectionState = BleDevice.ConnectionState.CONNECTING;
                 return true;
-            }
-            else
-            {
+            } else {
                 return false;
             }
         }
 
         final BluetoothDevice device = m_oBluetoothAdapter.getRemoteDevice(address);
-        if (device == null)
-        {
+        if (device == null) {
             Log.w(TAG, "Device not found.  Unable to connect.");
             return false;
         }
@@ -240,6 +223,7 @@ public class BleService extends Service {
         // autoConnect
         // parameter to false.
         m_oBluetoothGatt = device.connectGatt(this, false, m_oGattCallback);
+
         m_sDeviceAddress = address;
         m_sDeviceName = name;
         m_oConnectionState = BleDevice.ConnectionState.CONNECTING;
@@ -259,10 +243,8 @@ public class BleService extends Service {
      * {@code BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)}
      * callback.
      */
-    public void disconnect()
-    {
-        if (m_oBluetoothAdapter == null || m_oBluetoothGatt == null)
-        {
+    public void disconnect() {
+        if (m_oBluetoothAdapter == null || m_oBluetoothGatt == null) {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
@@ -273,10 +255,8 @@ public class BleService extends Service {
      * After using a given BLE device, the app must call this method to ensure
      * resources are released properly.
      */
-    public void close()
-    {
-        if (m_oBluetoothGatt == null)
-        {
+    public void close() {
+        if (m_oBluetoothGatt == null) {
             return;
         }
         m_oBluetoothGatt.close();
@@ -284,60 +264,33 @@ public class BleService extends Service {
     }
 
     /**
-     * @brief This function sends a message to the sensor board that starts the acceleration sensor on the board
+     * @brief This function sends a message to the sensor board that sets the LED on / off
      * SENDING DATA
      */
-    public boolean startSensor()
-    {
+    public boolean switchLED(boolean ledOn) {
         if (m_oBluetoothAdapter == null || m_oBluetoothGatt == null) {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return false;
         }
-        // TODO: Change UUID and send either 0x00 or 0x01
         //  BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_WRITE));
         // characteristic.setValue(new byte[]{0x64, 0x01});
 
         BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_LED_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_LED_CHARACTERISTIC));
-        characteristic.setValue(new byte[]{0x00});
+        byte[] b = ledOn ? new byte[]{0x01} : new byte[]{0x00};
+        characteristic.setValue(b);
 
         return m_oBluetoothGatt.writeCharacteristic(characteristic);
-
     }
 
+    public class switchReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_LED_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_LED_CHARACTERISTIC));
+            //byte[] b = ledOn ? new byte[]{0x01} : new byte[]{0x00};
+            byte[] b = new byte[]{0x01};
+            characteristic.setValue(b);
 
-    /**
-     * @brief This function stops the sensor on the sensor board
-     */
-    public boolean stopSensor()
-    {
-        if (m_oBluetoothAdapter == null || m_oBluetoothGatt == null) {
-            Log.w(TAG, "BluetoothAdapter not initialized");
-            return false;
+            m_oBluetoothGatt.writeCharacteristic(characteristic);
         }
-
-        BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_WRITE));
-        characteristic.setValue(new byte[]{0x00, 0x00});
-        return m_oBluetoothGatt.writeCharacteristic(characteristic);
-    }
-
-    /**
-     * @brief This function sets the characteristic notification of the bluetooth module on the sensor board
-     */
-    public boolean setCharacteristicNotification(boolean enable)
-    {
-        //*********************************************************************************************************************
-        //RCS
-        //*********************************************************************************************************************
-
-        /*BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_ACC_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_ACC_RAW_DATA_READ));
-        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString(GattAttributes.CHARACTERISTIC_UPDATE_NOTIFICATION));
-        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-        boolean success = m_oBluetoothGatt.writeDescriptor(descriptor);
-        if (success) {
-            return m_oBluetoothGatt.setCharacteristicNotification(characteristic, enable);
-        }*/
-
-
-        return false;
     }
 }

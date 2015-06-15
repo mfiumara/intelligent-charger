@@ -73,7 +73,7 @@ public class ChargeTimePredictor extends Predictor{
 
     public double predict(double startSOC, double endSOC) {
         if (chargePoints.size() > Global.MINIMUM_SAMPLES) {
-            if (startSOC > endSOC) {
+            if (startSOC < endSOC) {
                 // Create the vector to be predicted.
                 Instance startInstance = new DenseInstance(2);
                 startInstance.setDataset(trainingSet);
