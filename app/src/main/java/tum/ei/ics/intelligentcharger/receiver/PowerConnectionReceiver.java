@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.util.Calendar;
@@ -100,36 +101,56 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                     TargetSOCPredictor targetSOCPredictor =
                             new TargetSOCPredictor(context, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
 
-                    // Calculate charge starting point and put it in a Calendar to set the alarm time
-                    double unplugTime = unplugTimePredictor.predict(currEvent);
+                    // Check if the targetSOC is higher then the current SOC, otherwise don't charge
                     Integer maxSOC = targetSOCPredictor.predict();
-                    double chargeTime = chargeTimePredictor.predict(currEvent.getLevel(), maxSOC);
-                    prefEdit.putInt(context.getString(R.string.min_soc), Global.MIN_SOC);
-                    prefEdit.putInt(context.getString(R.string.max_soc), maxSOC);
+                    if (maxSOC > currEvent.getLevel()) {
+                        // Predict unplugtime and chargetime now
+                        double unplugPrediction = unplugTimePredictor.predict(currEvent);
+                        double chargeTimePrediction = chargeTimePredictor.predict(currEvent.getLevel(), maxSOC);
+                        prefEdit.putInt(context.getString(R.string.min_soc), Global.MIN_SOC);
+                        prefEdit.putInt(context.getString(R.string.max_soc), maxSOC);
+                        prefEdit.putFloat(context.getString(R.string.unplug_time), (float) unplugPrediction);
+                        prefEdit.putFloat(context.getString(R.string.charge_time), (float) chargeTimePrediction);
 
-                    if (unplugTime > 0 && chargeTime > 0) {
-                        prefEdit.putFloat(context.getString(R.string.unplug_time), (float) unplugTime);
-                        prefEdit.putFloat(context.getString(R.string.charge_time), (float) chargeTime);
-                        double chargeStart = unplugTime < chargeTime ? unplugTime - chargeTime + 24
-                                : unplugTime - chargeTime;
-                        int hours = (int) Math.floor(chargeStart) % 24;
-                        int minutes = (int) ((chargeStart - hours) * 60);
+                        double chargeStart = unplugPrediction < chargeTimePrediction ? unplugPrediction - chargeTimePrediction + 24
+                                : unplugPrediction - chargeTimePrediction;
 
-                        // Setup the alarm
+                        // Prepare start of charging broadcast
                         i = new Intent(context, StartChargeReceiver.class);
-                        pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
-                        alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                        Calendar calendar = Calendar.getInstance();
-                        calendar.setTimeInMillis(System.currentTimeMillis());
-                        if (calendar.HOUR_OF_DAY > (int) Math.floor(unplugTime)) {
-                            calendar.setTimeInMillis(System.currentTimeMillis() + 1000 * 60 * 60 * 24);
+                        if (unplugPrediction > 0 && chargeTimePrediction > 0) {
+                            // We have enough data to have done a successfully prediction
+                            int hours = (int) Math.floor(chargeStart) % 24;
+                            int minutes = (int) ((chargeStart - hours) * 60);
+
+                            // Get current time of day
+                            Calendar calendar = Calendar.getInstance();
+                            calendar.setTimeInMillis(System.currentTimeMillis());
+                            double currentTime = calendar.HOUR_OF_DAY + calendar.MINUTE / 60.0;
+
+                            Log.v(TAG, "Unplug time prediction: " + unplugPrediction);
+                            Log.v(TAG, "Charge time prediction: " + chargeTimePrediction);
+                            Log.v(TAG, "Current time          : " + currentTime);
+
+                            if (unplugPrediction < currentTime) { // Add one day to the calendar, as prediction is earlier than the current time
+                                calendar.setTimeInMillis(System.currentTimeMillis() + 1000 * 60 * 60 * 24);
+                            } else if (chargeStart < currentTime) {
+                                // Start charging immediately
+                                context.sendBroadcast(i);
+                            } else {
+                                // Create pending intent to fire the start of charging at the predicted time
+                                pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
+                                alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                                setNotification(context, chargeStart);
+                                alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+                            }
+                        } else {
+                            // Not enough data, or unusable prediction, start charging immediately
+                            context.sendBroadcast(i);
                         }
-                        calendar.set(Calendar.HOUR_OF_DAY, hours);
-                        calendar.set(Calendar.MINUTE, minutes);
-                        Toast.makeText(context, "Charging starts at: " + Utility.timeToString(chargeStart),
-                                Toast.LENGTH_SHORT).show();
-                        setNotification(context, chargeStart);
-                        alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+                        Toast.makeText(context, "Unplug prediction: " + Utility.timeToString(unplugPrediction) + "\n" +
+                                "charge time prediction: " + Utility.timeToString(chargeTimePrediction), Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(context, "Target SOC is lower then the current SOC, no charge needed!", Toast.LENGTH_SHORT).show();
                     }
                 }
             } else {

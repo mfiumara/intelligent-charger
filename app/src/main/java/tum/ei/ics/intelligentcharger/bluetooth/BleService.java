@@ -287,10 +287,8 @@ public class BleService extends Service {
         public void onReceive(Context context, Intent intent) {
             BluetoothGattCharacteristic characteristic = m_oBluetoothGatt.getService(UUID.fromString(GattAttributes.CH_RCS_LED_SERVICE)).getCharacteristic(UUID.fromString(GattAttributes.CH_RCS_LED_CHARACTERISTIC));
             //byte[] b = ledOn ? new byte[]{0x01} : new byte[]{0x00};
-            byte[] b = new byte[]{0x01};
-            characteristic.setValue(b);
-
-            m_oBluetoothGatt.writeCharacteristic(characteristic);
+            Bundle bundle = intent.getExtras();
+            switchLED(bundle.getBoolean("LED"));
         }
     }
 }

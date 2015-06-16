@@ -140,6 +140,6 @@ public class CycleFragment extends Fragment {
             values[i] = new DataPoint(cycles.get(i).getPluginEvent().getTime(),
                     cycles.get(i).getPlugoutEvent().getTime());
         }
-        cyclePoints.resetData(values);
+//        cyclePoints.resetData(values);
     }
 }

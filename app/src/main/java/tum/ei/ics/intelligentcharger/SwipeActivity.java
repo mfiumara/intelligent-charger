@@ -48,11 +48,13 @@ import tum.ei.ics.intelligentcharger.bluetooth.BleService;
 import tum.ei.ics.intelligentcharger.bluetooth.Bluetooth;
 import tum.ei.ics.intelligentcharger.bluetooth.BluetoothLeService;
 import tum.ei.ics.intelligentcharger.bluetooth.GattAttributes;
+import tum.ei.ics.intelligentcharger.entity.ChargePoint;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.fragment.ChargeCurveFragment;
 import tum.ei.ics.intelligentcharger.fragment.CycleFragment;
 import tum.ei.ics.intelligentcharger.fragment.MainFragment;
+import tum.ei.ics.intelligentcharger.predictor.ChargeTimePredictor;
 import tum.ei.ics.intelligentcharger.predictor.TargetSOCPredictor;
 import tum.ei.ics.intelligentcharger.receiver.StartChargeReceiver;
 import weka.classifiers.Classifier;
@@ -163,8 +165,13 @@ public class SwipeActivity extends FragmentActivity {
     }
 
     public void debug(View view) {
-        TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
-        Toast.makeText(this, Integer.toString(targetSOCPredictor.predict()) + "%", Toast.LENGTH_SHORT).show();
+//        TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
+//        Toast.makeText(this, Integer.toString(targetSOCPredictor.predict()) + "%", Toast.LENGTH_SHORT).show();
+
+        ChargeTimePredictor chargeTimePredictor = new ChargeTimePredictor(ChargePoint.listAll(ChargePoint.class));
+        double chargeTime = chargeTimePredictor.predict(25, 100);
+        Toast.makeText(this, Float.toString((float)chargeTime), Toast.LENGTH_SHORT).show();
+
     }
 
     public void bluetooth(View view) {
@@ -235,23 +242,37 @@ public class SwipeActivity extends FragmentActivity {
                 getString(R.string.preference_file_key), Context.MODE_PRIVATE);
 
         Intent gattServiceIntent = new Intent(this, BleService.class);
-        final String address = prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME, "");
-        final String deviceName = prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, "");
-        gattServiceIntent.putExtra("name", address);
-        gattServiceIntent.putExtra("address", deviceName);
+        final String address = prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, "");
+        final String deviceName = prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME, "");
+        gattServiceIntent.putExtra("address", address);
+        gattServiceIntent.putExtra("name", deviceName);
 
-        m_oGattUpdateReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                final String action = intent.getAction();
-                if(BleService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                    startBleService(address,deviceName);
+        if (m_oGattUpdateReceiver == null) {
+            m_oGattUpdateReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    final String action = intent.getAction();
+                    if (BleService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                        Intent gattServiceIntent = new Intent(context, BleService.class);
+                        SharedPreferences prefs = getSharedPreferences(
+                                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+                        final String address = prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, "");
+                        final String deviceName = prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME, "");
+                        gattServiceIntent.putExtra("address", address);
+                        gattServiceIntent.putExtra("name", deviceName);
+                        startService(gattServiceIntent);
+                        Intent switchLED = new Intent(context, BleService.switchReceiver.class);
+                        switchLED.putExtra("LED", true);
+                        sendBroadcast(switchLED);
+                    }
                 }
-            }
-        };
-        registerReceiver(m_oGattUpdateReceiver, makeGattUpdateIntentFilter());
-
-        startService(gattServiceIntent);
-
+            };
+            registerReceiver(m_oGattUpdateReceiver, makeGattUpdateIntentFilter());
+            startService(gattServiceIntent);
+        } else {
+            Intent switchLED = new Intent(this, BleService.switchReceiver.class);
+            switchLED.putExtra("LED", true);
+            sendBroadcast(switchLED);
+        }
     }
 }
