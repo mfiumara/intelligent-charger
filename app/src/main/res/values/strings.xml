@@ -40,5 +40,6 @@
     <string name="title_activity_bluetooth">BluetoothActivity</string>
 
     <string name="smart_charge">SMART_CHARGE</string>
+    <string name="enable_soc">ENABLE_SOC</string>
 
 </resources>

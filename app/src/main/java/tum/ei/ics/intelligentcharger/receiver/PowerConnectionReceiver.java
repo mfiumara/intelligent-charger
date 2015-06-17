@@ -98,11 +98,17 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                     ChargeTimePredictor chargeTimePredictor = // Only use chargepoints belonging to USB / AC cycles
                             new ChargeTimePredictor(ChargePoint.find(ChargePoint.class, "plug_type = ?",
                                     currEvent.getPlugged().toString()));
-                    TargetSOCPredictor targetSOCPredictor =
-                            new TargetSOCPredictor(context, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
 
+                    // Get target SOC, either from user input or from target SOC Predictor
+                    Integer maxSOC = 100;
+                    if (prefs.getBoolean(context.getString(R.string.enable_soc), true)) {
+                        maxSOC = prefs.getInt(context.getString(R.string.max_soc), 100);
+                    } else {
+                        TargetSOCPredictor targetSOCPredictor =
+                                new TargetSOCPredictor(context, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
+                        maxSOC = targetSOCPredictor.predict();
+                    }
                     // Check if the targetSOC is higher then the current SOC, otherwise don't charge
-                    Integer maxSOC = targetSOCPredictor.predict();
                     if (maxSOC > currEvent.getLevel()) {
                         // Predict unplugtime and chargetime now
                         double unplugPrediction = unplugTimePredictor.predict(currEvent);

@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.Switch;
@@ -38,6 +39,7 @@ public class MainFragment extends Fragment {
     private static SeekBar minSoc;
     private static SeekBar maxSoc;
     private static Switch smartCharge;
+    private static CheckBox enableSoc;
 
     private static SharedPreferences prefs;
     private static SharedPreferences.Editor prefEdit;
@@ -66,6 +68,7 @@ public class MainFragment extends Fragment {
         maxSoc = (SeekBar) rootView.findViewById(R.id.max_soc_bar);
 
         smartCharge = (Switch) rootView.findViewById(R.id.smart_charge);
+        enableSoc = (CheckBox) rootView.findViewById(R.id.enable_soc);
 
         // Open shared preference file
         prefs = this.getActivity().getSharedPreferences(
@@ -82,18 +85,13 @@ public class MainFragment extends Fragment {
         });
         minSoc.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             int minimumSoc;
-
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 minimumSoc = progress;
                 min_soc.setText(Integer.toString(minimumSoc) + "%");
             }
-
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
+            public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 Log.v(TAG, Integer.toString(minimumSoc));
@@ -123,7 +121,14 @@ public class MainFragment extends Fragment {
                 max_soc.setText(Integer.toString(maximumSoc) + "%");
             }
         });
-
+        enableSoc.setOnCheckedChangeListener(new CheckBox.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                maxSoc.setEnabled(isChecked);
+                prefEdit.putBoolean(getString(R.string.enable_soc), isChecked);
+                prefEdit.apply();
+            }
+        });
         updateData(getActivity());
 
         return rootView;
@@ -132,9 +137,7 @@ public class MainFragment extends Fragment {
     public static class updateView extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (rootView != null) {
-                updateData(context);
-            }
+            if (rootView != null) { updateData(context); }
         }
     }
 
@@ -152,6 +155,9 @@ public class MainFragment extends Fragment {
         // Set smart charging on or off
         smartCharge.setChecked(prefs.getBoolean(context.getString(R.string.smart_charge), true));
 
+        // Enable target SOC yes or no
+        maxSoc.setEnabled(prefs.getBoolean(context.getString(R.string.enable_soc), false));
+        enableSoc.setChecked(prefs.getBoolean(context.getString(R.string.enable_soc), false));
         // TODO: Set charging / discharging status
     }
 
