@@ -130,15 +130,14 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
 
                             // Get current time of day
                             Calendar calendar = Calendar.getInstance();
-                            calendar.setTimeInMillis(System.currentTimeMillis());
-                            double currentTime = calendar.HOUR_OF_DAY + calendar.MINUTE / 60.0;
+                            double currentTime = calendar.get(Calendar.HOUR_OF_DAY) + calendar.get(Calendar.MINUTE) / 60.0;
 
                             Log.v(TAG, "Unplug time prediction: " + unplugPrediction);
                             Log.v(TAG, "Charge time prediction: " + chargeTimePrediction);
                             Log.v(TAG, "Current time          : " + currentTime);
 
                             if (unplugPrediction < currentTime) { // Add one day to the calendar, as prediction is earlier than the current time
-                                calendar.setTimeInMillis(System.currentTimeMillis() + 1000 * 60 * 60 * 24);
+                                calendar.setTimeInMillis(calendar.getTimeInMillis() + 1000 * 60 * 60 * 24);
                             } else if (chargeStart < currentTime) {
                                 // Start charging immediately
                                 context.sendBroadcast(i);
@@ -147,6 +146,9 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                                 pendingIntent = PendingIntent.getBroadcast(context, 1, i, 0);
                                 alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
                                 setNotification(context, chargeStart);
+
+                                calendar.set(Calendar.HOUR_OF_DAY, hours);
+                                calendar.set(Calendar.MINUTE, minutes);
                                 alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
                             }
                         } else {
@@ -193,7 +195,6 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
             context.sendBroadcast(update);
         }
     }
-
     public void saveCycle(Context context, Cycle cycle) {
         // Save cycle to database only if SOC levels differ
         if (cycle.getPluginEvent().getLevel() < cycle.getPlugoutEvent().getLevel()) {
@@ -209,12 +210,8 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
         // Repopulate cycle graph (if needed)
         Intent i = new Intent(context, CycleFragment.updateView.class);
         context.sendBroadcast(i);
-
     }
-
     public void setNotification(Context context, double time) {
-        //Intent cancelAlarm = new Intent()
-
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context)
                 .setSmallIcon(R.drawable.ic_stat_action_settings_input_hdmi)
                 .setContentTitle("Charging postponed")
