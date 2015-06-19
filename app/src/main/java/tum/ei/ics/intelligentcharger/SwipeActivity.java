@@ -1,27 +1,9 @@
 package tum.ei.ics.intelligentcharger;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
-import android.app.AlarmManager;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.app.TaskStackBuilder;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.BluetoothProfile;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -35,59 +17,26 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.os.Bundle;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Toast;
 
-import tum.ei.ics.intelligentcharger.bluetooth.BleDevice;
 import tum.ei.ics.intelligentcharger.bluetooth.BleService;
 import tum.ei.ics.intelligentcharger.bluetooth.Bluetooth;
-import tum.ei.ics.intelligentcharger.bluetooth.BluetoothLeService;
-import tum.ei.ics.intelligentcharger.bluetooth.GattAttributes;
-import tum.ei.ics.intelligentcharger.entity.ChargePoint;
-import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
-import tum.ei.ics.intelligentcharger.entity.Cycle;
 import tum.ei.ics.intelligentcharger.fragment.ChargeCurveFragment;
 import tum.ei.ics.intelligentcharger.fragment.CycleFragment;
 import tum.ei.ics.intelligentcharger.fragment.MainFragment;
-import tum.ei.ics.intelligentcharger.predictor.ChargeTimePredictor;
-import tum.ei.ics.intelligentcharger.predictor.TargetSOCPredictor;
-import tum.ei.ics.intelligentcharger.receiver.StartChargeReceiver;
-import weka.classifiers.Classifier;
-import weka.classifiers.functions.LinearRegression;
-import weka.classifiers.meta.Bagging;
-import weka.classifiers.trees.J48;
-import weka.classifiers.trees.REPTree;
-import weka.classifiers.trees.RandomForest;
-import weka.core.Attribute;
-import weka.core.DenseInstance;
-import weka.core.Instance;
-import weka.core.Instances;
-
 
 public class SwipeActivity extends FragmentActivity {
     SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
 
-    private BleService m_oBluetoothLeService = null;
-    private ServiceConnection m_oServiceConnection = null;
-    private BroadcastReceiver m_oGattUpdateReceiver = null;
-
+    private BleService m_oBluetoothLeService;
+    private ServiceConnection m_oServiceConnection;
+    private BroadcastReceiver m_oGattUpdateReceiver;
     private BluetoothAdapter mBluetoothAdapter;
-    public final static String ACTION_GATT_CONNECTED =
-            "com.example.bluetooth.le.ACTION_GATT_CONNECTED";
-    public final static String ACTION_GATT_DISCONNECTED =
-            "com.example.bluetooth.le.ACTION_GATT_DISCONNECTED";
-    public final static String ACTION_GATT_SERVICES_DISCOVERED =
-            "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
-    public final static String ACTION_DATA_AVAILABLE =
-            "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
-    public final static String EXTRA_DATA =
-            "com.example.bluetooth.le.EXTRA_DATA";
 
     public static final String TAG = "MainActivity";
     @Override
@@ -117,9 +66,7 @@ public class SwipeActivity extends FragmentActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
+        if (id == R.id.action_settings) { return true; }
 
         return super.onOptionsItemSelected(item);
     }
@@ -164,20 +111,20 @@ public class SwipeActivity extends FragmentActivity {
         }
     }
 
-    public void debug(View view) {
-//        TargetSOCPredictor targetSOCPredictor = new TargetSOCPredictor(this, Cycle.listAll(Cycle.class), Global.HISTORY_SIZE);
-//        Toast.makeText(this, Integer.toString(targetSOCPredictor.predict()) + "%", Toast.LENGTH_SHORT).show();
-
-        ChargeTimePredictor chargeTimePredictor = new ChargeTimePredictor(ChargePoint.listAll(ChargePoint.class));
-        double chargeTime = chargeTimePredictor.predict(25, 100);
-        Toast.makeText(this, Float.toString((float)chargeTime), Toast.LENGTH_SHORT).show();
-
-    }
-
     public void bluetooth(View view) {
         SharedPreferences prefs = getSharedPreferences(
                 getString(R.string.preference_file_key), Context.MODE_PRIVATE);
 
+        // Initializes Bluetooth adapter.
+        final BluetoothManager bluetoothManager =
+                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        mBluetoothAdapter = bluetoothManager.getAdapter();
+        // Ensures Bluetooth is available on the device and it is enabled. If not,
+        // displays a dialog requesting user permission to enable Bluetooth.
+        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 1);
+        }
         startBleService(prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, ""), prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME, ""));
     }
     public boolean startBleService(final String address, final String deviceName) {
@@ -204,7 +151,7 @@ public class SwipeActivity extends FragmentActivity {
             public void onReceive(Context context, Intent intent) {
                 final String action = intent.getAction();
                 if(BleService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                    startBleService(address,deviceName);
+                    startBleService(address, deviceName);
                 }
             }
         };
@@ -221,58 +168,5 @@ public class SwipeActivity extends FragmentActivity {
         intentFilter.addAction(BleService.ACTION_GATT_CONNECTED);
         intentFilter.addAction(BleService.ACTION_GATT_DISCONNECTED);
         return intentFilter;
-    }
-
-    public void bluetoothTest(View view) {
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (mBluetoothAdapter == null) {
-            // Device does not support Bluetooth
-            return;
-        }
-        // Initializes Bluetooth adapter.
-        final BluetoothManager bluetoothManager =
-                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        mBluetoothAdapter = bluetoothManager.getAdapter();
-        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, 1);
-        }
-
-        SharedPreferences prefs = getSharedPreferences(
-                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-
-        Intent gattServiceIntent = new Intent(this, BleService.class);
-        final String address = prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, "");
-        final String deviceName = prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME, "");
-        gattServiceIntent.putExtra("address", address);
-        gattServiceIntent.putExtra("name", deviceName);
-
-        if (m_oGattUpdateReceiver == null) {
-            m_oGattUpdateReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    final String action = intent.getAction();
-                    if (BleService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                        Intent gattServiceIntent = new Intent(context, BleService.class);
-                        SharedPreferences prefs = getSharedPreferences(
-                                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
-                        final String address = prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, "");
-                        final String deviceName = prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME, "");
-                        gattServiceIntent.putExtra("address", address);
-                        gattServiceIntent.putExtra("name", deviceName);
-                        startService(gattServiceIntent);
-                        Intent switchLED = new Intent(context, BleService.switchReceiver.class);
-                        switchLED.putExtra("LED", true);
-                        sendBroadcast(switchLED);
-                    }
-                }
-            };
-            registerReceiver(m_oGattUpdateReceiver, makeGattUpdateIntentFilter());
-            startService(gattServiceIntent);
-        } else {
-            Intent switchLED = new Intent(this, BleService.switchReceiver.class);
-            switchLED.putExtra("LED", true);
-            sendBroadcast(switchLED);
-        }
     }
 }

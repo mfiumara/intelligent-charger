@@ -4,8 +4,6 @@ import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -84,7 +82,7 @@ public class StartChargeReceiver extends BroadcastReceiver {
 
         // TODO: Connect to bluetooth and send start charge command, binding a service is not allowed within broadcast receiver
 
-        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        /*BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             // Device does not support Bluetooth
             return;
@@ -97,7 +95,7 @@ public class StartChargeReceiver extends BroadcastReceiver {
             mBluetoothAdapter.enable();
         }
 
-        startBleService(context, prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, ""), prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME,""));
+        startBleService(context, prefs.getString(Global.AUTOCONNECT_BLE_DEVICEADDRESS, ""), prefs.getString(Global.AUTOCONNECT_BLE_DEVICENAME,""));*/
     }
     public boolean startBleService(Context context, final String address, final String deviceName) {
         m_oServiceConnection = new ServiceConnection() {
