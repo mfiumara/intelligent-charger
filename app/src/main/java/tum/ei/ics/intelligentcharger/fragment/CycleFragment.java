@@ -131,7 +131,6 @@ public class CycleFragment extends Fragment {
     }
 
     public static void updateData(Context context) {
-        // TODO: Debug this
         // Populate graph
         List<Cycle> cycles = Cycle.listAll(Cycle.class);
         Integer N = cycles.size();
@@ -140,6 +139,7 @@ public class CycleFragment extends Fragment {
             values[i] = new DataPoint(cycles.get(i).getPluginEvent().getTime(),
                     cycles.get(i).getPlugoutEvent().getTime());
         }
+        // TODO: Debug this
 //        cyclePoints.resetData(values);
     }
 }

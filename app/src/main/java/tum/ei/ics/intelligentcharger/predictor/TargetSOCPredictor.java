@@ -9,6 +9,7 @@ import com.google.common.primitives.Ints;
 import java.util.ArrayList;
 import java.util.List;
 
+import tum.ei.ics.intelligentcharger.Global;
 import tum.ei.ics.intelligentcharger.R;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
 
@@ -30,7 +31,7 @@ public class TargetSOCPredictor {
 
         Integer N = cycles.size();
         maxSOC = prefs.getInt(context.getString(R.string.max_soc), 100);
-        maxError = prefs.getInt(context.getString(R.string.max_error), 20);
+        maxError = prefs.getInt(context.getString(R.string.max_error), Global.ERROR_MARGIN);
         Integer error = 0;
 
         if (N > batchSize) {
@@ -46,7 +47,7 @@ public class TargetSOCPredictor {
             }
 
             // Calculate maximum error in last batchSize number of cycles and correct with maximum error last recorded
-            error = Ints.max(deltaSOCArray) - maxSOC;
+            //error = Ints.max(deltaSOCArray) - maxSOC;
             maxSOC = Ints.max(deltaSOCArray) + maxError;
             // Clip maxSOC between 0 and 100%
             if (maxSOC >= 100) {
@@ -54,7 +55,7 @@ public class TargetSOCPredictor {
             } else if (maxSOC <= 0) {
                 maxSOC = 0;
             }
-            maxError = error > 0 ? error : maxError;
+            //maxError = error > 0 ? error : maxError;
 
             prefEdit.putInt(context.getString(R.string.max_soc), maxSOC);
             prefEdit.putInt(context.getString(R.string.max_error), maxError);

@@ -25,11 +25,6 @@ public class Cycle extends SugarRecord<Cycle> {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         Date pluginDate = sdf.parse(pluginEvent.getDatetime());
         Date plugoutDate = sdf.parse(plugoutEvent.getDatetime());
-//        DateTime pluginDateTime = new DateTime(pluginDate);
-//        DateTime plugoutDateTime = new DateTime(plugoutDate);
-
-
-//        Float duration = sdf.format(pluginEvent.datetime);
 
         return 1.0f;
     }

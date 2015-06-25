@@ -19,7 +19,7 @@ import weka.filters.unsupervised.attribute.AddExpression;
 /**
  * Created by mattia on 03.06.15.
  */
-public class ChargeTimePredictor extends Predictor{
+public class ChargeTimePredictor extends Predictor {
     private List<ChargePoint> chargePoints;
     private double SPLIT = 75;
 

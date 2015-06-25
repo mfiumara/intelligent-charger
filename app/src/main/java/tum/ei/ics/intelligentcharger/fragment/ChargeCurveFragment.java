@@ -150,7 +150,8 @@ public class ChargeCurveFragment extends Fragment {
             USBCurve.setColor(Color.RED);
             USBCurve.setThickness(8);
             graph.addSeries(USBCurve);
-
+            graph.getGridLabelRenderer().setHorizontalAxisTitle("Time (minutes)");
+            graph.getGridLabelRenderer().setVerticalAxisTitle("SOC (%)");
 
             graph.setTitle("Charge Time vs Battery Level");
         }

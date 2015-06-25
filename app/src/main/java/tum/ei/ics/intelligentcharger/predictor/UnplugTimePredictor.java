@@ -7,7 +7,9 @@ import java.util.List;
 import tum.ei.ics.intelligentcharger.Global;
 import tum.ei.ics.intelligentcharger.entity.ConnectionEvent;
 import tum.ei.ics.intelligentcharger.entity.Cycle;
+import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
+import weka.classifiers.meta.Bagging;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -16,7 +18,7 @@ import weka.core.Instances;
 /**
  * Created by mattia on 03.06.15.
  */
-public class UnplugTimePredictor extends Predictor{
+public class UnplugTimePredictor extends Predictor {
     private List<Cycle> cycles;
     private float shift;
 
@@ -123,7 +125,7 @@ public class UnplugTimePredictor extends Predictor{
         }
 
         //TODO: Create better model and build the classifier
-        /*Classifier decisionTree = (Classifier) new weka.classifiers.trees.REPTree();
+/*        Classifier decisionTree = (Classifier) new weka.classifiers.trees.REPTree();
         Bagging randomForest = new Bagging();
         randomForest.setClassifier(decisionTree);*/
 

@@ -40,6 +40,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
 
         // Reset CurveEvents
         CurveEvent.deleteAll(CurveEvent.class);
+
         if (battery.isCharging()) {
             // Initialize new curveID
             Long curveID = prefs.getLong(context.getString(R.string.curve_id), -1);

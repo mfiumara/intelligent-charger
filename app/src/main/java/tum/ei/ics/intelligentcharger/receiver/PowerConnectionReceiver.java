@@ -113,11 +113,13 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                         // Predict unplugtime and chargetime now
                         double unplugPrediction = unplugTimePredictor.predict(currEvent);
                         double chargeTimePrediction = chargeTimePredictor.predict(currEvent.getLevel(), maxSOC);
+
                         prefEdit.putInt(context.getString(R.string.min_soc), Global.MIN_SOC);
                         prefEdit.putInt(context.getString(R.string.max_soc), maxSOC);
                         prefEdit.putFloat(context.getString(R.string.unplug_time), (float) unplugPrediction);
                         prefEdit.putFloat(context.getString(R.string.charge_time), (float) chargeTimePrediction);
 
+                        // Compensate time for in-between days
                         double chargeStart = unplugPrediction < chargeTimePrediction ? unplugPrediction - chargeTimePrediction + 24
                                 : unplugPrediction - chargeTimePrediction;
 
@@ -136,6 +138,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                             Log.v(TAG, "Charge time prediction: " + chargeTimePrediction);
                             Log.v(TAG, "Current time          : " + currentTime);
 
+                            // TODO: Check if this is the case
                             if (unplugPrediction < currentTime) { // Add one day to the calendar, as prediction is earlier than the current time
                                 calendar.setTimeInMillis(calendar.getTimeInMillis() + 1000 * 60 * 60 * 24);
                             } else if (chargeStart < currentTime) {
@@ -158,6 +161,7 @@ public class PowerConnectionReceiver extends BroadcastReceiver {
                         Toast.makeText(context, "Unplug prediction: " + Utility.timeToString(unplugPrediction) + "\n" +
                                 "charge time prediction: " + Utility.timeToString(chargeTimePrediction), Toast.LENGTH_LONG).show();
                     } else {
+                        // TODO: Switch off bluetooth charger & remember that bluetooth charger is connected
                         Toast.makeText(context, "Target SOC is lower then the current SOC, no charge needed!", Toast.LENGTH_SHORT).show();
                     }
                 }
